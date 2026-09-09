@@ -1,0 +1,19 @@
+# Virtual environment
+.venv/
+
+# Environment variables / secrets
+.env
+
+# Python cache
+__pycache__/
+*.py[cod]
+
+# PyCharm
+.idea/
+
+# Django / local files
+*.log
+
+# OS files
+.DS_Store
+Thumbs.db
