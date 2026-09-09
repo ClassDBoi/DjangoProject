@@ -1,5 +1,5 @@
 """
-WSGI config for SeniorDesing_AUSME project.
+WSGI config for SeniorDesign_AUSME project.
 
 It exposes the WSGI callable as a module-level variable named ``application``.
 
@@ -11,6 +11,6 @@ import os
 
 from django.core.wsgi import get_wsgi_application
 
-os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'SeniorDesing_AUSME.settings')
+os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'SeniorDesign_AUSME.settings')
 
 application = get_wsgi_application()
