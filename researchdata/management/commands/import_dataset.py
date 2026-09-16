@@ -2,7 +2,7 @@ import json
 
 from django.core.management.base import BaseCommand
 from django.db import transaction
-from django.utils.dateparse import parse_date
+from django.utils.dateparse import parse_date, parse_datetime
 
 from researchdata.models import (
     Researcher,
@@ -41,6 +41,12 @@ class Command(BaseCommand):
 
         self.stdout.write(
             self.style.SUCCESS("Papers imported.")
+        )
+
+        self.import_opportunities(data["opportunities"])
+
+        self.stdout.write(
+            self.style.SUCCESS("Opportunities imported.")
         )
 
     def import_researchers(self, researchers):
@@ -117,3 +123,84 @@ class Command(BaseCommand):
                    f"that are not part of the researcher dataset."
                )
            )
+
+    def import_opportunities(self, opportunities):
+        for item in opportunities:
+
+            #Due date parsing
+
+            due_date = None
+
+            if item.get("due_date"):
+                due_date = parse_datetime(
+                    item["due_date"]
+                )
+
+            #Create and/or update Opportunity
+
+            opportunity, created = Opportunity.objects.update_or_create(
+                opp_id=item["opp_id"],
+                defaults={
+                    "title": item["title"],
+                    "agency": item.get("agency"),
+                    "category": item.get("category"),
+                    "estimated_funding": item.get("estimated_funding"),
+                    "award_floor": item.get("award_floor"),
+                    "award_ceiling": item.get("award_ceiling"),
+                    "due_date": due_date,
+                    "summary": item.get("summary"),
+                    "description": item.get("description"),
+
+                    # Don't clean the description yet.
+                    # Do that during NLP data preprocessing.
+                    "clean_description": None,
+                }
+            )
+
+            #Importing Opportunity Topics (if provided)
+
+            opportunity.topics.filter(
+                source="provided"
+            ).delete()
+
+            topic_objects = []
+
+            for topic_item in item.get("topics", []):
+                topic_objects.append(
+                    OpportunityTopic(
+                        opportunity=opportunity,
+                        topic=topic_item["topic"],
+                        score=topic_item["score"],
+                        source="provided",
+                    )
+                )
+
+            OpportunityTopic.objects.bulk_create(
+                topic_objects
+            )
+
+            #Importing Opportunity Domains (if provided)
+
+            opportunity.domains.all().delete()
+
+            domain_objects = []
+
+            for domain_item in item.get("domains", []):
+                domain_objects.append(
+                    OpportunityDomain(
+                        opportunity=opportunity,
+                        domain_name=domain_item["domain_name"],
+                        confidence_score=domain_item[
+                            "confidence_score"
+                        ],
+                        rationale=domain_item.get("rationale"),
+                        is_primary=domain_item.get(
+                            "is_primary",
+                            False
+                        ),
+                    )
+                )
+
+            OpportunityDomain.objects.bulk_create(
+                domain_objects
+            )
