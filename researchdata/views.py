@@ -4,34 +4,181 @@ from rest_framework.response import Response
 from django.utils.html import strip_tags
 
 from .models import Researcher, Paper, Opportunity
+from html import unescape
+
+import json
+from pathlib import Path
+from django.conf import settings
+
+def word_count(text):
+    cleaned = strip_tags(unescape(text or ""))
+    return len(cleaned.split())
 
 
-@api_view(['GET'])
+def make_histogram(lengths, bins):
+    return [
+        {
+            "range": label,
+            "count": sum(
+                1
+                for length in lengths
+                if length >= lower
+                and (upper is None or length <= upper)
+            ),
+        }
+        for label, lower, upper in bins
+    ]
+
+# 仪表板Dashboard
+@api_view(["GET"])
 def dashboard_stats(request):
+    paper_rows = list(
+        Paper.objects.values_list("title", "abstract")
+    )
+    opportunity_rows = list(
+        Opportunity.objects.values_list(
+            "clean_description", "description"
+        )
+    )
+
+    title_lengths = [
+        word_count(title)
+        for title, abstract in paper_rows
+    ]
+
+    abstract_lengths = [
+        word_count(abstract)
+        for title, abstract in paper_rows
+    ]
+
+    description_lengths = [
+        word_count(
+            clean_description
+            if clean_description and clean_description.strip()
+            else description
+        )
+        for clean_description, description in opportunity_rows
+    ]
+
+    announcement_path = (
+        Path(settings.BASE_DIR)
+        / "data"
+        / "senior_design_full_announcements.json"
+    )
+
+    with announcement_path.open(encoding="utf-8") as file:
+        announcement_data = json.load(file)
+
+    announcements_by_id = {
+        str(row["opp_id"]): row.get("full_announcement")
+        for row in announcement_data["opportunities"]
+    }
+
+    opportunity_ids = list(
+        Opportunity.objects.values_list("opp_id", flat=True)
+    )
+
+    announcement_lengths = [
+        word_count(announcements_by_id.get(str(opp_id)))
+        for opp_id in opportunity_ids
+    ]
+
+    chunk_size = 500
+    chunk_overlap = 100
+    chunk_step = chunk_size - chunk_overlap
+
+    chunk_counts = [
+        0 if length == 0 else (
+            1
+            + (
+                max(0, length - chunk_size)
+                + chunk_step - 1
+            ) // chunk_step
+        )
+        for length in announcement_lengths
+    ]
+
     return Response({
         "researchers": Researcher.objects.count(),
-        "papers": Paper.objects.count(),
-        "opportunities": Opportunity.objects.count(),
+        "papers": len(paper_rows),
+        "opportunities": len(opportunity_rows),
 
-        "paper_title_lengths": [
-            {"range": "0-4", "count": 14},
-            {"range": "5-9", "count": 90},
-            {"range": "10-14", "count": 137},
-            {"range": "15-19", "count": 75},
-            {"range": "20-29", "count": 28},
-            {"range": "30+", "count": 0}
-        ],
+        "paper_title_lengths": make_histogram(
+            title_lengths,
+            [
+                ("0-4", 0, 4),
+                ("5-9", 5, 9),
+                ("10-14", 10, 14),
+                ("15-19", 15, 19),
+                ("20-29", 20, 29),
+                ("30+", 30, None),
+            ],
+        ),
 
-        "funding_description_lengths": [
-            {"range": "0-49", "count": 7},
-            {"range": "50-99", "count": 6},
-            {"range": "100-199", "count": 7},
-            {"range": "200-399", "count": 2},
-            {"range": "400+", "count": 3}
-        ]
+        "paper_abstract_lengths": make_histogram(
+            abstract_lengths,
+            [
+                ("0", 0, 0),
+                ("1-99", 1, 99),
+                ("100-199", 100, 199),
+                ("200-399", 200, 399),
+                ("400-799", 400, 799),
+                ("800+", 800, None),
+            ],
+        ),
+
+        "funding_description_lengths": make_histogram(
+            description_lengths,
+            [
+                ("0", 0, 0),
+                ("1-49", 1, 49),
+                ("50-99", 50, 99),
+                ("100-199", 100, 199),
+                ("200-399", 200, 399),
+                ("400+", 400, None),
+            ],
+        ),
+
+        "funding_full_announcement_lengths": make_histogram(
+            announcement_lengths,
+            [
+                ("0", 0, 0),
+                ("1-2499", 1, 2499),
+                ("2500-4999", 2500, 4999),
+                ("5000-9999", 5000, 9999),
+                ("10000-19999", 10000, 19999),
+                ("20000-29999", 20000, 29999),
+                ("30000+", 30000, None),
+            ],
+        ),
+
+        "funding_rag_chunk_counts": make_histogram(
+            chunk_counts,
+            [
+                ("0", 0, 0),
+                ("1-5", 1, 5),
+                ("6-10", 6, 10),
+                ("11-20", 11, 20),
+                ("21-40", 21, 40),
+                ("41-60", 41, 60),
+                ("61+", 61, None),
+            ],
+        ),
+
+        "rag_chunk_settings": {
+            "size_words": chunk_size,
+            "overlap_words": chunk_overlap,
+        },
+
+        "missing_full_announcements": announcement_lengths.count(0),
+
+        "missingness": {
+            "paper_abstract": abstract_lengths.count(0),
+            "funding_description": description_lengths.count(0),
+        },
     })
 
-
+#学者researchers
 @api_view(['GET'])
 def researcher_list(request):
     search = request.GET.get('search', '').strip()
