@@ -1,0 +1,299 @@
+{
+  "source": "data\\senior_design_subset.json",
+  "model": {
+    "model": "BAAI/bge-m3",
+    "context_window": 8192,
+    "exact_counts_available": true,
+    "papers": {
+      "distribution": {
+        "count": 344,
+        "minimum": 26,
+        "q1": 49.0,
+        "median": 56.5,
+        "mean": 57.31,
+        "q3": 65.25,
+        "maximum": 102
+      },
+      "exceed_context": 0
+    },
+    "opportunities": {
+      "distribution": {
+        "count": 25,
+        "minimum": 21,
+        "q1": 104.0,
+        "median": 167,
+        "mean": 232.92,
+        "q3": 261.0,
+        "maximum": 734
+      },
+      "exceed_context": 0
+    },
+    "researchers": {
+      "distribution": {
+        "count": 25,
+        "minimum": 134,
+        "q1": 725.0,
+        "median": 841,
+        "mean": 782.48,
+        "q3": 914.0,
+        "maximum": 1069
+      },
+      "exceed_context": 0
+    }
+  },
+  "record_counts": {
+    "researchers": 25,
+    "papers": 344,
+    "opportunities": 25,
+    "paper_keyword_records": 1720,
+    "unique_keyword_phrases_casefolded": 1466,
+    "paper_researcher_references_in_source": 399,
+    "paper_researcher_links_matching_25_researchers": 349,
+    "paper_researcher_references_to_external_researchers": 50,
+    "distinct_external_researcher_auids": 32,
+    "provided_opportunity_topics": 80,
+    "provided_opportunity_domains": 63,
+    "duplicate_paper_titles_not_necessarily_duplicate_papers": 1
+  },
+  "missingness": {
+    "researcher_expertise": 25,
+    "paper_abstract": 344,
+    "paper_summary": 344,
+    "paper_title": 0,
+    "paper_publication_date": 7,
+    "paper_published_in": 33,
+    "opportunity_summary": 25,
+    "opportunity_description": 0,
+    "opportunities_without_provided_topics": 9,
+    "opportunities_without_provided_domains": 9,
+    "opportunity_description_with_html": 7
+  },
+  "words": {
+    "paper_title": {
+      "count": 344,
+      "minimum": 2,
+      "q1": 9.0,
+      "median": 12.0,
+      "mean": 12.27,
+      "q3": 15.0,
+      "maximum": 28
+    },
+    "paper_abstract": {
+      "count": 344,
+      "minimum": 0,
+      "q1": 0.0,
+      "median": 0.0,
+      "mean": 0,
+      "q3": 0.0,
+      "maximum": 0
+    },
+    "paper_embedding_input": {
+      "count": 344,
+      "minimum": 11,
+      "q1": 22.0,
+      "median": 26.0,
+      "mean": 26.05,
+      "q3": 29.0,
+      "maximum": 50
+    },
+    "opportunity_title": {
+      "count": 25,
+      "minimum": 1,
+      "q1": 6.0,
+      "median": 8,
+      "mean": 9.2,
+      "q3": 13.0,
+      "maximum": 25
+    },
+    "opportunity_clean_description": {
+      "count": 25,
+      "minimum": 4,
+      "q1": 45.0,
+      "median": 97,
+      "mean": 137.04,
+      "q3": 154.0,
+      "maximum": 471
+    },
+    "opportunity_embedding_input": {
+      "count": 25,
+      "minimum": 8,
+      "q1": 64.0,
+      "median": 109,
+      "mean": 149.24,
+      "q3": 169.0,
+      "maximum": 480
+    },
+    "researcher_aggregate_embedding_input": {
+      "count": 25,
+      "minimum": 70,
+      "q1": 359.0,
+      "median": 397,
+      "mean": 367.12,
+      "q3": 421.0,
+      "maximum": 518
+    }
+  },
+  "characters": {
+    "paper_title": {
+      "count": 344,
+      "minimum": 17,
+      "q1": 72.0,
+      "median": 89.0,
+      "mean": 94.31,
+      "q3": 119.0,
+      "maximum": 178
+    },
+    "opportunity_clean_description": {
+      "count": 25,
+      "minimum": 32,
+      "q1": 331.0,
+      "median": 760,
+      "mean": 979.16,
+      "q3": 1123.0,
+      "maximum": 3143
+    }
+  },
+  "histograms": {
+    "paper_title_words": {
+      "0-4": 14,
+      "5-9": 90,
+      "10-14": 137,
+      "15-19": 75,
+      "20-29": 28,
+      "30+": 0
+    },
+    "opportunity_description_words": {
+      "0-49": 7,
+      "50-99": 6,
+      "100-199": 7,
+      "200-399": 2,
+      "400+": 3
+    }
+  },
+  "longest_opportunity_descriptions": [
+    {
+      "opp_id": 313636,
+      "title": "USAID/Afghanistan Request for Information: Higher Education",
+      "description_words": 471,
+      "embedding_input_words": 480,
+      "bge_m3_tokens": 734
+    },
+    {
+      "opp_id": 315048,
+      "title": "Nuclear Data Interagency Working Group / Research Program",
+      "description_words": 417,
+      "embedding_input_words": 428,
+      "bge_m3_tokens": 613
+    },
+    {
+      "opp_id": 45638,
+      "title": "Earth Sciences: Instrumentation and Facilities",
+      "description_words": 404,
+      "embedding_input_words": 412,
+      "bge_m3_tokens": 635
+    },
+    {
+      "opp_id": 357493,
+      "title": "NCCIH Natural Product Mid Phase Clinical Trial (R01 Clinical Trial Required)",
+      "description_words": 280,
+      "embedding_input_words": 294,
+      "bge_m3_tokens": 472
+    },
+    {
+      "opp_id": 359862,
+      "title": "Maximizing Investigators' Research Award (MIRA) (R35 - Clinical Trial Optional)",
+      "description_words": 201,
+      "embedding_input_words": 214,
+      "bge_m3_tokens": 358
+    }
+  ],
+  "shortest_opportunity_descriptions": [
+    {
+      "opp_id": 350582,
+      "title": "RFA-DD-18-000",
+      "description_words": 4
+    },
+    {
+      "opp_id": 350630,
+      "title": "RFA-SH-18-000",
+      "description_words": 8
+    },
+    {
+      "opp_id": 350651,
+      "title": "RFA-EH-18-000",
+      "description_words": 8
+    },
+    {
+      "opp_id": 94534,
+      "title": "BLM NV Winnemucca District Office Intern Program",
+      "description_words": 39
+    },
+    {
+      "opp_id": 320217,
+      "title": "EARTH MRI-SOUTH CAROLINA",
+      "description_words": 44
+    }
+  ],
+  "most_common_keywords": [
+    [
+      "icesat-2",
+      9
+    ],
+    [
+      "systems engineering",
+      7
+    ],
+    [
+      "methyl salicylate",
+      7
+    ],
+    [
+      "systemic acquired resistance",
+      7
+    ],
+    [
+      "hydrogen production",
+      7
+    ],
+    [
+      "steam reforming",
+      7
+    ],
+    [
+      "mass spectrometry",
+      6
+    ],
+    [
+      "salicylic acid",
+      6
+    ],
+    [
+      "ion mobility spectrometry",
+      5
+    ],
+    [
+      "environmental impact",
+      5
+    ],
+    [
+      "parkinson's disease",
+      5
+    ],
+    [
+      "coherent coupling",
+      5
+    ],
+    [
+      "systematic review",
+      4
+    ],
+    [
+      "traveling waves",
+      4
+    ],
+    [
+      "machine learning",
+      4
+    ]
+  ]
+}
