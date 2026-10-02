@@ -1,5 +1,6 @@
-
 import React, { useEffect, useState } from "react";
+
+import CollapsibleText from "./CollapsibleText";
 
 const API_BASE = import.meta.env.VITE_API_BASE;
 
@@ -179,11 +180,11 @@ function Opportunities() {
                     </div>
                 </div>
 
-                <div style={{ flex: 1, minWidth: "320px" }}>
+                <div style={detailColumnStyle}>
                     {detailLoading && <p>Loading opportunity details...</p>}
 
                     {selected && (
-                        <div style={cardStyle}>
+                        <div style={detailCardStyle}>
                             <h2>{selected.title}</h2>
 
                             <p><strong>Agency:</strong> {selected.agency || "Not available"}</p>
@@ -209,10 +210,19 @@ function Opportunities() {
                                 {formatDate(selected.due_date)}
                             </p>
 
-                            <h3>Description</h3>
-                            <p style={{ whiteSpace: "pre-wrap", overflowWrap: "anywhere" }}>
-                                {selected.description || "Not available"}
-                            </p>
+                            <section style={descriptionSectionStyle}>
+                                <h3>Short Description</h3>
+                                <div style={descriptionTextStyle}>
+                                    {selected.description || "Not available"}
+                                </div>
+                            </section>
+
+                            <CollapsibleText
+                                title="Full Research Announcement"
+                                text={selected.full_announcement}
+                                showLabel="Click to show full announcement"
+                                hideLabel="Hide full announcement"
+                            />
 
                             <h3>Topics</h3>
 
@@ -285,8 +295,40 @@ const cardStyle = {
     backgroundColor: "white",
     border: "1px solid #ddd",
     borderRadius: "10px",
+    cursor: "pointer",
+    overflowWrap: "anywhere"
+};
+
+const detailColumnStyle = {
+    flex: 1,
+    minWidth: "320px",
+    alignSelf: "flex-start",
+    position: "sticky",
+    top: "20px",
+    maxHeight: "calc(100vh - 40px)",
+    overflowY: "auto",
+    paddingRight: "4px"
+};
+
+const detailCardStyle = {
+    ...cardStyle,
+    cursor: "default",
+    marginBottom: 0
+};
+
+const descriptionSectionStyle = {
+    marginTop: "20px",
+    marginBottom: "20px"
+};
+
+const descriptionTextStyle = {
+    padding: "14px",
+    border: "1px solid #e1e1e1",
+    borderRadius: "8px",
+    backgroundColor: "#fafafa",
+    whiteSpace: "pre-wrap",
     overflowWrap: "anywhere",
-    whiteSpace: "pre-line"
+    lineHeight: 1.55
 };
 
 const paginationStyle = {

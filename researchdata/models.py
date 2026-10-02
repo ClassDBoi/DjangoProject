@@ -99,6 +99,11 @@ class Opportunity(models.Model):
 
     title = models.TextField()
 
+    full_announcement = models.TextField(
+        null=True,
+        blank=True,
+    )
+
     agency = models.CharField(
         max_length=255,
         blank=True,

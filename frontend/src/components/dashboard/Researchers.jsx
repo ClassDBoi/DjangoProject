@@ -1,5 +1,7 @@
 import React, { useEffect, useState } from "react";
 
+import CollapsibleText from "./CollapsibleText";
+
 const API_BASE = import.meta.env.VITE_API_BASE;
 
 function Researchers() {
@@ -103,11 +105,11 @@ function Researchers() {
                     ))}
                 </div>
 
-                <div style={{ flex: 2, minWidth: "320px" }}>
+                <div style={detailColumnStyle}>
                     {detailLoading && <p>Loading details...</p>}
 
                     {selected && (
-                        <div style={cardStyle}>
+                        <div style={detailCardStyle}>
                             <h2>{selected.name}</h2>
 
                             <p><strong>Title:</strong> {selected.title || "Not available"}</p>
@@ -135,6 +137,13 @@ function Researchers() {
                                             <strong>Citations:</strong>{" "}
                                             {paper.total_citations ?? "Not available"}
                                         </p>
+
+                                        <CollapsibleText
+                                            title="Abstract / Research Description"
+                                            text={paper.abstract}
+                                            showLabel="Click to show abstract"
+                                            hideLabel="Hide abstract"
+                                        />
 
                                         <strong>Keywords:</strong>
 
@@ -188,6 +197,23 @@ const cardStyle = {
     border: "1px solid #ddd",
     borderRadius: "10px",
     cursor: "pointer"
+};
+
+const detailColumnStyle = {
+    flex: 2,
+    minWidth: "320px",
+    alignSelf: "flex-start",
+    position: "sticky",
+    top: "20px",
+    maxHeight: "calc(100vh - 40px)",
+    overflowY: "auto",
+    paddingRight: "4px"
+};
+
+const detailCardStyle = {
+    ...cardStyle,
+    cursor: "default",
+    marginBottom: 0
 };
 
 const paperStyle = {
