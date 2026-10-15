@@ -22,3 +22,7 @@ Thumbs.db
 frontend/node_modules/
 frontend/dist/
 frontend/.env
+data/*.json
+
+.venv-benchmark*/
+benchmark/results/*/embeddings/
