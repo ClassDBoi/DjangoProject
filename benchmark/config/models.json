@@ -1,0 +1,36 @@
+{
+  "models": [
+    {
+      "key": "bge_m3",
+      "family": "BGE",
+      "model_id": "BAAI/bge-m3",
+      "prefix": "",
+      "trust_remote_code": false,
+      "notes": "Final BGE-M3 use: benchmark-only comparison via Sentence Transformers."
+    },
+    {
+      "key": "all_mpnet_base_v2",
+      "family": "Sentence Transformers / SBERT",
+      "model_id": "sentence-transformers/all-mpnet-base-v2",
+      "prefix": "",
+      "trust_remote_code": false,
+      "notes": "General-purpose sentence similarity / semantic search baseline."
+    },
+    {
+      "key": "e5_large_v2",
+      "family": "E5",
+      "model_id": "intfloat/e5-large-v2",
+      "prefix": "query: ",
+      "trust_remote_code": false,
+      "notes": "For symmetric semantic similarity, E5's model card recommends the query: prefix for both inputs."
+    },
+    {
+      "key": "gte_large_en_v1_5",
+      "family": "GTE",
+      "model_id": "Alibaba-NLP/gte-large-en-v1.5",
+      "prefix": "",
+      "trust_remote_code": true,
+      "notes": "English GTE v1.5 model loaded through Sentence Transformers."
+    }
+  ]
+}

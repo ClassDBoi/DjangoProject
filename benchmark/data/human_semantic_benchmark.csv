@@ -1,0 +1,76 @@
+pair_id,reviewer_set,phrase_a,phrase_b,human_score,score_definition
+P001,Set 1,Phylogeny,Phylogenomics,4,"Strongly related; same specific concept area, but not equivalent"
+P002,Set 1,Natural Product Clinical Trials,Clinical Trials of Natural Products,5,Essentially the same meaning / near equivalent
+P003,Set 1,Ethnographic Partnerships,Community-Based Research Partnerships,4,"Strongly related; same specific concept area, but not equivalent"
+P004,Set 1,Target Identification and Validation,Therapeutic Product Development,3,Moderately related; clear and meaningful topical connection
+P005,Set 1,Natural Products,Geologic Mapping,1,"Unrelated, or wording overlap is misleading"
+P006,Set 1,Pavement Performance,Responsible Fatherhood Policy,1,"Unrelated, or wording overlap is misleading"
+P007,Set 1,Gel Permeation Chromatography,FTIR,2,"Weakly related; only a broad, indirect, or domain-level connection"
+P008,Set 1,Next-Generation Sensors,Neural Recording,3,Moderately related; clear and meaningful topical connection
+P009,Set 1,Pavement Performance,Road Durability,4,"Strongly related; same specific concept area, but not equivalent"
+P010,Set 1,Auditory Perception,Hearing Perception,5,Essentially the same meaning / near equivalent
+P011,Set 1,Cultural Heritage,Genetic Inheritance,1,"Unrelated, or wording overlap is misleading"
+P012,Set 1,Earth Sciences Instrumentation,Geoscience Research Instrumentation,5,Essentially the same meaning / near equivalent
+P013,Set 1,Bioengineering,Biomedical Engineering,4,"Strongly related; same specific concept area, but not equivalent"
+P014,Set 1,Juvenile Reentry,Youth Reentry Services,4,"Strongly related; same specific concept area, but not equivalent"
+P015,Set 1,Paper Spray,Research Paper,1,"Unrelated, or wording overlap is misleading"
+P016,Set 1,Patient-Oriented Research,Clinical Research with Human Participants,4,"Strongly related; same specific concept area, but not equivalent"
+P017,Set 1,Nuclear Physics,Family Strengthening,1,"Unrelated, or wording overlap is misleading"
+P018,Set 1,Hypostominae,Loricariidae,4,"Strongly related; same specific concept area, but not equivalent"
+P019,Set 1,Small Molecules,Biologics,3,Moderately related; clear and meaningful topical connection
+P020,Set 1,Working Memory,Computer Memory,1,"Unrelated, or wording overlap is misleading"
+P021,Set 1,Flood Control and Irrigation,Musical Training,1,"Unrelated, or wording overlap is misleading"
+P022,Set 1,Therapeutic Candidates,Political Candidates,1,"Unrelated, or wording overlap is misleading"
+P023,Set 1,Juvenile Reentry,Community Reentry in High-Crime Areas,3,Moderately related; clear and meaningful topical connection
+P024,Set 1,Research Equipment Acquisition,Scientific Instrumentation,4,"Strongly related; same specific concept area, but not equivalent"
+P025,Set 1,Nuclear Safeguards and Forensics,Nuclear Nonproliferation,4,"Strongly related; same specific concept area, but not equivalent"
+P026,Set 2,Higher Education Partnerships,Ion Mobility Spectrometry,1,"Unrelated, or wording overlap is misleading"
+P027,Set 2,Mass Spectrometry,Ion Mobility Separations,3,Moderately related; clear and meaningful topical connection
+P028,Set 2,Geophysical Data Collection,Healthy Marriage,1,"Unrelated, or wording overlap is misleading"
+P029,Set 2,Nuclear Safeguards,Nuclear Security Safeguards,4,"Strongly related; same specific concept area, but not equivalent"
+P030,Set 2,Auditory System,Cortical Sound Processing,4,"Strongly related; same specific concept area, but not equivalent"
+P031,Set 2,Target Engagement,Employee Engagement,1,"Unrelated, or wording overlap is misleading"
+P032,Set 2,Phylogenomics,Family Strengthening,1,"Unrelated, or wording overlap is misleading"
+P033,Set 2,Dynamic Modulus,Asphalt Material Stiffness,4,"Strongly related; same specific concept area, but not equivalent"
+P034,Set 2,Geologic Mapping,Geophysical Data Collection,3,Moderately related; clear and meaningful topical connection
+P035,Set 2,Higher Education,University Education,5,Essentially the same meaning / near equivalent
+P036,Set 2,Healthy Marriage Programs,Marriage Strengthening Programs,5,Essentially the same meaning / near equivalent
+P037,Set 2,Nahua Epistemologies,Franciscans,3,Moderately related; clear and meaningful topical connection
+P038,Set 2,Healthy Marriage,Responsible Fatherhood Policy,3,Moderately related; clear and meaningful topical connection
+P039,Set 2,Mass Spectrometry,Pavement Performance,1,"Unrelated, or wording overlap is misleading"
+P040,Set 2,Pitch Perception,Auditory Perception,4,"Strongly related; same specific concept area, but not equivalent"
+P041,Set 2,Ion Mobility Spectrometry,Ion Mobility Mass Spectrometry,4,"Strongly related; same specific concept area, but not equivalent"
+P042,Set 2,Research Equipment Acquisition,Recreation Site Maintenance,1,"Unrelated, or wording overlap is misleading"
+P043,Set 2,Pavement Performance,Asphalt Binder,3,Moderately related; clear and meaningful topical connection
+P044,Set 2,Target Identification and Validation,Therapeutic Target Validation,4,"Strongly related; same specific concept area, but not equivalent"
+P045,Set 2,Cold Central Plant Recycling,Reclaimed Asphalt Pavement,4,"Strongly related; same specific concept area, but not equivalent"
+P046,Set 2,Diabetes Mellitus,Type 2 Diabetes Mellitus,4,"Strongly related; same specific concept area, but not equivalent"
+P047,Set 2,Nuclear Data,Musical Training,1,"Unrelated, or wording overlap is misleading"
+P048,Set 2,Neural Recording,Concert Recording,1,"Unrelated, or wording overlap is misleading"
+P049,Set 2,Earth Sciences,Planetary Science,3,Moderately related; clear and meaningful topical connection
+P050,Set 2,Proof of Concept,Early-Stage Technology Validation,4,"Strongly related; same specific concept area, but not equivalent"
+P051,Set 3,Computational Models of Behavior,Machine Learning Behavior Prediction,4,"Strongly related; same specific concept area, but not equivalent"
+P052,Set 3,Nonindustrial Private Forest,Non-Industrial Private Forest Owners,4,"Strongly related; same specific concept area, but not equivalent"
+P053,Set 3,Recreation Area Operations,Recreation Site Maintenance,4,"Strongly related; same specific concept area, but not equivalent"
+P054,Set 3,Natural Product Clinical Trials,Bioavailability,3,Moderately related; clear and meaningful topical connection
+P055,Set 3,Native American Cultural Landscapes,Cultural Heritage,3,Moderately related; clear and meaningful topical connection
+P056,Set 3,Diabetes Research,Geophysical Mapping,1,"Unrelated, or wording overlap is misleading"
+P057,Set 3,Working Memory,Short-Term Working Memory,5,Essentially the same meaning / near equivalent
+P058,Set 3,Colonial Period,Biomedical Technology Development,1,"Unrelated, or wording overlap is misleading"
+P059,Set 3,Active Learning in the Classroom,Machine Learning Algorithm,1,"Unrelated, or wording overlap is misleading"
+P060,Set 3,Musical Training,Pitch Perception,3,Moderately related; clear and meaningful topical connection
+P061,Set 3,Sensor and Neural Recording Data,Brain-Behavior Synchronization,3,Moderately related; clear and meaningful topical connection
+P062,Set 3,Earth Sciences,Soil Science,3,Moderately related; clear and meaningful topical connection
+P063,Set 3,Bioengineering Tools,Biomedical Technology Development,4,"Strongly related; same specific concept area, but not equivalent"
+P064,Set 3,Phylogeny,Gene Expression,2,"Weakly related; only a broad, indirect, or domain-level connection"
+P065,Set 3,Public Lands Management,Land Management Policies,4,"Strongly related; same specific concept area, but not equivalent"
+P066,Set 3,Mass Spectrometry,Mass Spectrometric Analysis,5,Essentially the same meaning / near equivalent
+P067,Set 3,Pitch Perception,Asphalt Binder,1,"Unrelated, or wording overlap is misleading"
+P068,Set 3,Traveling Waves,Academic Travel Grants,1,"Unrelated, or wording overlap is misleading"
+P069,Set 3,Geologic Mapping,Geological Mapping,5,Essentially the same meaning / near equivalent
+P070,Set 3,Coloniality,Colonial Period,3,Moderately related; clear and meaningful topical connection
+P071,Set 3,Cypriniformes,Loricariidae,2,"Weakly related; only a broad, indirect, or domain-level connection"
+P072,Set 3,Family Strengthening,Structural Strength,1,"Unrelated, or wording overlap is misleading"
+P073,Set 3,Brain Recording,EEG Data Collection,4,"Strongly related; same specific concept area, but not equivalent"
+P074,Set 3,Clinical Trials,Court Trials,1,"Unrelated, or wording overlap is misleading"
+P075,Set 3,Ribosome Inactivation,Ribosome-Inactivating Protein,4,"Strongly related; same specific concept area, but not equivalent"

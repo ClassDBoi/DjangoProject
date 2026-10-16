@@ -1,0 +1,90 @@
+{
+  "created_at_utc": "2026-10-14T21:02:40.127130+00:00",
+  "benchmark": {
+    "path": "C:\\Users\\kaaaa\\PycharmProjects\\DjangoProject\\benchmark\\data\\human_semantic_benchmark.csv",
+    "sha256": "aea3d72c98bfafa2aefbcc8fd6a8bafdeb24661e046bc4d4d326af035cd979a7",
+    "pair_count": 75,
+    "unique_phrase_count": 117,
+    "score_distribution": {
+      "1": 23,
+      "2": 3,
+      "3": 16,
+      "4": 25,
+      "5": 8
+    },
+    "reviewer_set_distribution": {
+      "Set 1": 25,
+      "Set 2": 25,
+      "Set 3": 25
+    }
+  },
+  "run": {
+    "selected_models": [
+      "bge_m3",
+      "all_mpnet_base_v2",
+      "e5_large_v2",
+      "gte_large_en_v1_5"
+    ],
+    "device_argument": "cpu",
+    "batch_size": 16,
+    "python": "3.13.14 (tags/v3.13.14:fd17997, Jun 10 2026, 13:03:48) [MSC v.1944 64 bit (AMD64)]",
+    "platform": "Windows-11-10.0.26200-SP0"
+  },
+  "packages": {
+    "numpy": "2.5.4",
+    "scipy": "1.18.1",
+    "sentence-transformers": "5.7.0",
+    "torch": "2.14.1",
+    "transformers": "4.57.6"
+  },
+  "models": [
+    {
+      "key": "bge_m3",
+      "family": "BGE",
+      "model_id": "BAAI/bge-m3",
+      "prefix": "",
+      "trust_remote_code": false,
+      "embedding_dimension": 1024,
+      "model_commit_hash": "5617a9f61b028005a4858fdac845db406aefb181",
+      "runtime_seconds": 6.194,
+      "normalization": "L2 via SentenceTransformer.encode(normalize_embeddings=True)",
+      "similarity": "cosine implemented as dot product of normalized embeddings"
+    },
+    {
+      "key": "all_mpnet_base_v2",
+      "family": "Sentence Transformers / SBERT",
+      "model_id": "sentence-transformers/all-mpnet-base-v2",
+      "prefix": "",
+      "trust_remote_code": false,
+      "embedding_dimension": 768,
+      "model_commit_hash": "e8c3b32edf5434bc2275fc9bab85f82640a19130",
+      "runtime_seconds": 4.75,
+      "normalization": "L2 via SentenceTransformer.encode(normalize_embeddings=True)",
+      "similarity": "cosine implemented as dot product of normalized embeddings"
+    },
+    {
+      "key": "e5_large_v2",
+      "family": "E5",
+      "model_id": "intfloat/e5-large-v2",
+      "prefix": "query: ",
+      "trust_remote_code": false,
+      "embedding_dimension": 1024,
+      "model_commit_hash": "f169b11e22de13617baa190a028a32f3493550b6",
+      "runtime_seconds": 6.557,
+      "normalization": "L2 via SentenceTransformer.encode(normalize_embeddings=True)",
+      "similarity": "cosine implemented as dot product of normalized embeddings"
+    },
+    {
+      "key": "gte_large_en_v1_5",
+      "family": "GTE",
+      "model_id": "Alibaba-NLP/gte-large-en-v1.5",
+      "prefix": "",
+      "trust_remote_code": true,
+      "embedding_dimension": 1024,
+      "model_commit_hash": "104333d6af6f97649377c2afbde10a7704870c7b",
+      "runtime_seconds": 8.059,
+      "normalization": "L2 via SentenceTransformer.encode(normalize_embeddings=True)",
+      "similarity": "cosine implemented as dot product of normalized embeddings"
+    }
+  ]
+}

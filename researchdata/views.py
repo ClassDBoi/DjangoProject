@@ -1,34 +1,154 @@
+import html
+import math
+import re
+
 from django.core.paginator import Paginator
+from django.utils.html import strip_tags
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
-from django.utils.html import strip_tags
 
 from .models import Researcher, Paper, Opportunity
 
 
+RAG_CHUNK_WORDS = 500
+RAG_CHUNK_OVERLAP_WORDS = 75
+
+
+def _clean_text(value):
+    """Normalize database text for dashboard word-count diagnostics."""
+    if not value:
+        return ""
+
+    text = str(value)
+
+    # Match the intent of Scripts/analyze_dataset.py without adding a runtime
+    # BeautifulSoup dependency to the Django API.
+    text = re.sub(
+        r"<(script|style)\b[^>]*>.*?</\1>",
+        " ",
+        text,
+        flags=re.IGNORECASE | re.DOTALL,
+    )
+    text = strip_tags(text)
+    text = html.unescape(text)
+    return " ".join(text.split())
+
+
+def _word_count(value):
+    return len(_clean_text(value).split())
+
+
+def _bin_counts(values, edges):
+    rows = []
+
+    for index, start in enumerate(edges):
+        end = edges[index + 1] if index + 1 < len(edges) else None
+        label = f"{start}+" if end is None else f"{start}-{end - 1}"
+        count = sum(
+            value >= start and (end is None or value < end)
+            for value in values
+        )
+        rows.append({"range": label, "count": count})
+
+    return rows
+
+
+def _estimated_chunk_count(
+    words,
+    chunk_words=RAG_CHUNK_WORDS,
+    overlap_words=RAG_CHUNK_OVERLAP_WORDS,
+):
+    """Mirror the fixed-size planning estimate in analyze_dataset.py."""
+    if words <= 0:
+        return 0
+
+    if words <= chunk_words:
+        return 1
+
+    stride = chunk_words - overlap_words
+    return 1 + math.ceil((words - chunk_words) / stride)
+
+
 @api_view(['GET'])
 def dashboard_stats(request):
+    papers = list(
+        Paper.objects.values(
+            'title',
+            'abstract',
+        )
+    )
+    opportunities = list(
+        Opportunity.objects.values(
+            'description',
+            'clean_description',
+            'full_announcement',
+        )
+    )
+
+    paper_title_words = [
+        _word_count(paper['title'])
+        for paper in papers
+    ]
+    paper_abstract_words = [
+        _word_count(paper['abstract'])
+        for paper in papers
+    ]
+
+    opportunity_description_words = []
+    opportunity_full_announcement_words = []
+    opportunity_estimated_rag_chunks = []
+
+    for opportunity in opportunities:
+        description = (
+            opportunity['clean_description']
+            or opportunity['description']
+            or ""
+        )
+        full_announcement = opportunity['full_announcement'] or ""
+        full_words = _word_count(full_announcement)
+
+        opportunity_description_words.append(_word_count(description))
+        opportunity_full_announcement_words.append(full_words)
+        opportunity_estimated_rag_chunks.append(
+            _estimated_chunk_count(full_words)
+        )
+
     return Response({
         "researchers": Researcher.objects.count(),
-        "papers": Paper.objects.count(),
-        "opportunities": Opportunity.objects.count(),
+        "papers": len(papers),
+        "opportunities": len(opportunities),
+        "papers_with_abstracts": sum(
+            words > 0 for words in paper_abstract_words
+        ),
+        "opportunities_with_full_announcements": sum(
+            words > 0 for words in opportunity_full_announcement_words
+        ),
 
-        "paper_title_lengths": [
-            {"range": "0-4", "count": 14},
-            {"range": "5-9", "count": 90},
-            {"range": "10-14", "count": 137},
-            {"range": "15-19", "count": 75},
-            {"range": "20-29", "count": 28},
-            {"range": "30+", "count": 0}
-        ],
-
-        "funding_description_lengths": [
-            {"range": "0-49", "count": 7},
-            {"range": "50-99", "count": 6},
-            {"range": "100-199", "count": 7},
-            {"range": "200-399", "count": 2},
-            {"range": "400+", "count": 3}
-        ]
+        # These bins mirror the current Scripts/analyze_dataset.py output.
+        "paper_title_lengths": _bin_counts(
+            paper_title_words,
+            [0, 5, 10, 15, 20, 30],
+        ),
+        "paper_abstract_lengths": _bin_counts(
+            paper_abstract_words,
+            [0, 1, 100, 200, 400, 800],
+        ),
+        "funding_description_lengths": _bin_counts(
+            opportunity_description_words,
+            [0, 50, 100, 200, 400],
+        ),
+        "funding_full_announcement_lengths": _bin_counts(
+            opportunity_full_announcement_words,
+            [0, 1, 2500, 5000, 10000, 20000, 30000],
+        ),
+        "funding_rag_chunk_estimates": _bin_counts(
+            opportunity_estimated_rag_chunks,
+            [0, 1, 6, 11, 21, 41, 61],
+        ),
+        "rag_chunk_assumptions": {
+            "chunk_words": RAG_CHUNK_WORDS,
+            "overlap_words": RAG_CHUNK_OVERLAP_WORDS,
+        },
     })
 
 
@@ -78,6 +198,7 @@ def researcher_detail(request, auid):
             "publication_date": paper.publication_date,
             "published_in": paper.published_in,
             "total_citations": paper.total_citations,
+            "abstract": paper.abstract or "Not available",
             "keywords": [
                 {
                     "keyword": keyword.keyword,
@@ -95,6 +216,7 @@ def researcher_detail(request, auid):
         "college": researcher.college,
         "papers": paper_data
     })
+
 
 @api_view(['GET'])
 def paper_list(request):
@@ -170,7 +292,8 @@ def paper_detail(request, paper_id):
         ]
     })
 
-#融资API
+
+# Funding opportunity API
 
 @api_view(['GET'])
 def opportunity_list(request):
@@ -236,6 +359,7 @@ def opportunity_detail(request, opp_id):
         "award_ceiling": opportunity.award_ceiling,
         "due_date": opportunity.due_date,
         "description": description or "Not available",
+        "full_announcement": opportunity.full_announcement or "Not available",
 
         "topics": [
             {
