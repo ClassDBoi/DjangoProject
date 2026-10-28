@@ -11,9 +11,10 @@ import {
     ResponsiveContainer
 } from "recharts";
 
-const API_BASE = import.meta.env.VITE_API_BASE;
+// Falls back to the Vite dev-server proxy (/api) when VITE_API_BASE is not set.
+const API_BASE = (import.meta.env.VITE_API_BASE || "/api").replace(/\/+$/, "");
 
-function HistogramCard({ title, data, xLabel = "Word-count range", note }) {
+function HistogramCard({ title, data, xLabel = "Word-count range", unit = "words", note }) {
     return (
         <div style={chartCard}>
             <h3>{title}</h3>
@@ -26,6 +27,8 @@ function HistogramCard({ title, data, xLabel = "Word-count range", note }) {
                     <CartesianGrid strokeDasharray="3 3" />
                     <XAxis
                         dataKey="range"
+                        interval={0}
+                        tick={{ fontSize: 12 }}
                         label={{
                             value: xLabel,
                             position: "insideBottom",
@@ -33,7 +36,10 @@ function HistogramCard({ title, data, xLabel = "Word-count range", note }) {
                         }}
                     />
                     <YAxis allowDecimals={false} />
-                    <Tooltip />
+                    <Tooltip
+                        formatter={(value) => [value, "Records"]}
+                        labelFormatter={(label) => `${label} ${unit}`}
+                    />
                     <Bar dataKey="count" fill="#236FA5">
                         <LabelList dataKey="count" position="top" />
                     </Bar>
@@ -51,22 +57,37 @@ function Dashboard() {
     const [error, setError] = useState("");
 
     useEffect(() => {
-        fetch(`${API_BASE}/dashboard/`)
-            .then((response) => {
+        const controller = new AbortController();
+
+        async function loadStats() {
+            setLoading(true);
+            setError("");
+
+            try {
+                // no-store: always show statistics from the current database.
+                const response = await fetch(`${API_BASE}/dashboard/`, {
+                    signal: controller.signal,
+                    cache: "no-store",
+                });
+
                 if (!response.ok) {
-                    throw new Error("Failed to fetch dashboard data");
+                    throw new Error(`Failed to fetch dashboard data (${response.status})`);
                 }
-                return response.json();
-            })
-            .then((data) => {
-                setStats(data);
-            })
-            .catch((err) => {
-                setError(err.message);
-            })
-            .finally(() => {
-                setLoading(false);
-            });
+
+                setStats(await response.json());
+            } catch (err) {
+                if (err.name !== "AbortError") {
+                    setError(err.message);
+                }
+            } finally {
+                if (!controller.signal.aborted) {
+                    setLoading(false);
+                }
+            }
+        }
+
+        loadStats();
+        return () => controller.abort();
     }, []);
 
     if (loading) {
@@ -74,7 +95,7 @@ function Dashboard() {
     }
 
     if (error) {
-        return <p>Error: {error}</p>;
+        return <p role="alert" style={{ color: "red" }}>Error: {error}</p>;
     }
 
     const chunkWords = stats.rag_chunk_assumptions?.chunk_words ?? 500;
@@ -114,6 +135,7 @@ function Dashboard() {
             </div>
 
             <h2 style={{ marginTop: "40px" }}>Dataset Analysis</h2>
+            <p style={chartNoteStyle}>Calculated from the current database on each page load.</p>
 
 
             <div style={chartsContainer}>
@@ -141,6 +163,7 @@ function Dashboard() {
                     title="Estimated RAG Chunks per Full Announcement"
                     data={stats.funding_rag_chunk_estimates}
                     xLabel="Estimated chunk-count range"
+                    unit="chunks"
                     note={`Planning estimate only: ${chunkWords} words per chunk with ${overlapWords} words of overlap. Final retrieval should use meaningful document sections where possible.`}
                 />
             </div>

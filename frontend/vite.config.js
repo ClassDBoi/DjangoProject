@@ -28,5 +28,12 @@ export default defineConfig({
   server: {
     host: true,
     port: 5173,
+    // Lets the frontend call /api/... without VITE_API_BASE or CORS setup in development.
+    proxy: {
+      '/api': {
+        target: 'http://127.0.0.1:8000',
+        changeOrigin: true,
+      },
+    },
   },
 });
