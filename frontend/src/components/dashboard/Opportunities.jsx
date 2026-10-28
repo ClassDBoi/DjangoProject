@@ -1,8 +1,10 @@
 import React, { useEffect, useState } from "react";
 
 import CollapsibleText from "./CollapsibleText";
+import useDeselectOnOutsideClick from "./useDeselectOnOutsideClick";
 
-const API_BASE = import.meta.env.VITE_API_BASE;
+// Falls back to the Vite dev-server proxy (/api) when VITE_API_BASE is not set.
+const API_BASE = (import.meta.env.VITE_API_BASE || "/api").replace(/\/+$/, "");
 
 function Opportunities() {
     const [opportunities, setOpportunities] = useState([]);
@@ -15,6 +17,12 @@ function Opportunities() {
     const [loading, setLoading] = useState(true);
     const [detailLoading, setDetailLoading] = useState(false);
     const [error, setError] = useState("");
+
+    // Click anywhere outside the cards and detail panel to clear the selection.
+    useDeselectOnOutsideClick(
+        "[data-opportunity-card], [data-opportunity-details]",
+        setSelected
+    );
 
     useEffect(() => {
         const controller = new AbortController();
@@ -127,6 +135,7 @@ function Opportunities() {
                         opportunities.map((opportunity) => (
                             <div
                                 key={opportunity.opp_id}
+                                data-opportunity-card
                                 style={cardStyle}
                                 onClick={() => showDetails(opportunity.opp_id)}
                             >
@@ -180,7 +189,7 @@ function Opportunities() {
                     </div>
                 </div>
 
-                <div style={detailColumnStyle}>
+                <div data-opportunity-details style={detailColumnStyle}>
                     {detailLoading && <p>Loading opportunity details...</p>}
 
                     {selected && (

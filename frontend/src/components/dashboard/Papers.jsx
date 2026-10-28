@@ -1,8 +1,10 @@
 import React, { useEffect, useState } from "react";
 
 import CollapsibleText from "./CollapsibleText";
+import useDeselectOnOutsideClick from "./useDeselectOnOutsideClick";
 
-const API_BASE = import.meta.env.VITE_API_BASE;
+// Falls back to the Vite dev-server proxy (/api) when VITE_API_BASE is not set.
+const API_BASE = (import.meta.env.VITE_API_BASE || "/api").replace(/\/+$/, "");
 
 function Papers() {
     const [papers, setPapers] = useState([]);
@@ -16,6 +18,12 @@ function Papers() {
     const [loading, setLoading] = useState(true);
     const [detailLoading, setDetailLoading] = useState(false);
     const [error, setError] = useState("");
+
+    // Click anywhere outside the cards and detail panel to clear the selection.
+    useDeselectOnOutsideClick(
+        "[data-paper-card], [data-paper-details]",
+        setSelected
+    );
 
     useEffect(() => {
         fetch(`${API_BASE}/researchers/`)
@@ -137,6 +145,7 @@ function Papers() {
                         papers.map((paper) => (
                             <div
                                 key={paper.id}
+                                data-paper-card
                                 style={cardStyle}
                                 onClick={() => showDetails(paper.id)}
                             >
@@ -179,7 +188,7 @@ function Papers() {
                     </div>
                 </div>
 
-                <div style={detailColumnStyle}>
+                <div data-paper-details style={detailColumnStyle}>
                     {detailLoading && <p>Loading paper details...</p>}
 
                     {selected && (
