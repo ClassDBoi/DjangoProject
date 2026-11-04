@@ -76,11 +76,24 @@ npm run build
 - Normal database accounts can read and write rows but cannot change the schema.
   Migrations must be run with the privileged account.
 
-## Semantic matching (status)
+## Semantic matching
 
 Researchers are matched to opportunities topic to topic: keywords generated from each
-researcher's papers are compared with topics extracted from the scientific sections of
-each announcement, using the `all-mpnet-base-v2` embedding model. Every match keeps
-its evidence (which topic matched which keyword, and from which paper). Scores are
-semantic similarity, not a probability or likelihood of funding. This pipeline runs
-outside the web app for now; its results are not yet in the database or the frontend.
+researcher's papers are compared with research topics extracted from the scientific
+sections of each announcement, using the `all-mpnet-base-v2` embedding model. Every
+match keeps its evidence (which topic matched which keyword, and from which paper).
+Scores are semantic similarity, not a probability or likelihood of funding;
+eligibility and deadlines are not checked.
+
+The matches are produced outside the web app by the `slm_benchmark` pipeline and
+imported into the project-created `ausme_*` tables:
+
+```powershell
+# Dry run first: checks every researcher, opportunity and paper exists and prints counts
+python manage.py import_matches slm_benchmark\results\matching\match_v2\matches.json
+python manage.py import_matches slm_benchmark\results\matching\match_v2\matches.json --apply
+```
+
+The imported run becomes the one the website shows. Matches below its semantic
+similarity cutoff (default 0.50, chosen from the team's blind review of matches)
+are shown as "No close match".

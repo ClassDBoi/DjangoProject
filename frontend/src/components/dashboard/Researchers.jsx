@@ -4,6 +4,7 @@ import { Link } from "react-router-dom";
 import CollegeBadge from "../common/CollegeBadge";
 import ExpandableText from "../common/ExpandableText";
 import KeywordChips from "../common/KeywordChips";
+import MatchList from "../common/MatchList";
 import ListToolbar, { FilterSelect } from "../common/ListToolbar";
 import {
     cardStyle, detailCardStyle, detailColumnStyle, layoutStyle, linkStyle, listColumnStyle,
@@ -44,6 +45,7 @@ function Researchers() {
     });
     const researchers = data || [];
     const detail = useDetail("/researchers/", params.selected);
+    const matches = useDetail("/researchers/", params.selected, "matches/");
 
     const select = useCallback((auid) => update({ selected: auid }, { keepPage: true, push: true }), [update]);
     const deselect = useCallback(() => update({ selected: "" }, { keepPage: true }), [update]);
@@ -150,6 +152,8 @@ function Researchers() {
                             <p style={metaStyle}><strong>Department:</strong> {selected.department || NOT_AVAILABLE}</p>
                             <p style={metaStyle}><strong>College:</strong> {selected.college || NOT_AVAILABLE}</p>
                             <p style={metaStyle}><strong>AUID:</strong> {selected.auid}</p>
+
+                            <MatchList kind="researcher" data={matches.data} loading={matches.loading} />
 
                             <h3 style={sectionTitleStyle}>
                                 Research Papers ({papers.length})

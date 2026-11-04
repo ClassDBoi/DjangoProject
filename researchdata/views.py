@@ -9,7 +9,7 @@ from django.utils.html import strip_tags
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
 
-from .models import Researcher, Paper, Opportunity
+from .models import MatchRun, Opportunity, Paper, Researcher, ResearcherOpportunityMatch
 
 
 # ---------------------------------------------------------------------------
@@ -561,4 +561,124 @@ def filter_options(request):
             "min_funding": funding["low"],
             "max_funding": funding["high"],
         },
+    })
+
+
+# ---------------------------------------------------------------------------
+# Researcher-opportunity matches (project-created data, ausme_* tables).
+#
+# Served from the active MatchRun (see `manage.py import_matches`). Only matches
+# at or above the run's semantic similarity cutoff are returned. Semantic
+# similarity is not a probability or likelihood of funding, and eligibility
+# and deadlines are not part of it.
+# ---------------------------------------------------------------------------
+
+UNMATCHED_MESSAGES = {
+    "no_research_topics": "Not matched: the announcement text only yielded administrative "
+                          "or career-stage topics, not research topics.",
+    "insufficient_text": "Not matched: there is not enough announcement text to extract research topics.",
+}
+
+
+def _run_info(run):
+    return {
+        "name": run.name,
+        "semantic_model": run.embedding_model,
+        "similarity_cutoff": run.similarity_cutoff,
+        "imported_at": run.imported_at,
+    }
+
+
+def _evidence(match):
+    return [
+        {
+            "opportunity_topic": link.opportunity_topic,
+            "researcher_term": link.researcher_term,
+            "paper_id": link.paper_id,
+            "paper_title": link.paper.title if link.paper else None,
+            "other_paper_count": link.other_paper_count,
+            "semantic_similarity": round(link.semantic_similarity, 4),
+        }
+        for link in match.evidence.all()
+    ]
+
+
+@api_view(['GET'])
+def researcher_matches(request, auid):
+    """Closest funding opportunities for one researcher (default 3, max 10)."""
+    if not Researcher.objects.filter(auid=auid).exists():
+        return Response({"error": "Researcher not found"}, status=404)
+
+    run = MatchRun.objects.filter(is_active=True).first()
+    if run is None:
+        return Response({"run": None, "matches": [], "no_close_match": False})
+
+    limit = _int_param(request, "limit", 3, 1, 10)
+    rows = (
+        ResearcherOpportunityMatch.objects
+        .filter(run=run, researcher_id=auid, semantic_similarity__gte=run.similarity_cutoff)
+        .select_related("opportunity")
+        .prefetch_related("evidence__paper")
+        .order_by("rank_for_researcher")[:limit]
+    )
+
+    matches = [
+        {
+            "opp_id": match.opportunity.opp_id,
+            "title": match.opportunity.title,
+            "agency": match.opportunity.agency,
+            "due_date": match.opportunity.due_date,
+            "rank": match.rank_for_researcher,
+            "semantic_similarity": round(match.semantic_similarity, 4),
+            "evidence": _evidence(match),
+        }
+        for match in rows
+    ]
+
+    has_any = ResearcherOpportunityMatch.objects.filter(run=run, researcher_id=auid).exists()
+    return Response({
+        "run": _run_info(run),
+        "matches": matches,
+        "no_close_match": has_any and not matches,
+    })
+
+
+@api_view(['GET'])
+def opportunity_matches(request, opp_id):
+    """Closest researchers for one funding opportunity (default 5, max 25)."""
+    if not Opportunity.objects.filter(opp_id=opp_id).exists():
+        return Response({"error": "Opportunity not found"}, status=404)
+
+    run = MatchRun.objects.filter(is_active=True).first()
+    if run is None:
+        return Response({"run": None, "matches": [], "no_close_match": False, "unmatched_reason": None})
+
+    reason = run.unmatched_opportunities.get(str(opp_id))
+    limit = _int_param(request, "limit", 5, 1, 25)
+    rows = (
+        ResearcherOpportunityMatch.objects
+        .filter(run=run, opportunity_id=opp_id, semantic_similarity__gte=run.similarity_cutoff)
+        .select_related("researcher")
+        .prefetch_related("evidence__paper")
+        .order_by("rank_for_opportunity")[:limit]
+    )
+
+    matches = [
+        {
+            "auid": match.researcher.auid,
+            "name": match.researcher.name,
+            "department": match.researcher.department,
+            "college": match.researcher.college,
+            "rank": match.rank_for_opportunity,
+            "semantic_similarity": round(match.semantic_similarity, 4),
+            "evidence": _evidence(match),
+        }
+        for match in rows
+    ]
+
+    return Response({
+        "run": _run_info(run),
+        "matches": matches,
+        "no_close_match": reason is None and not matches,
+        "unmatched_reason": UNMATCHED_MESSAGES.get(reason) if reason else None,
     })

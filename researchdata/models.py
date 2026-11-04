@@ -213,3 +213,98 @@ class ResearcherExpertise(models.Model):
         max_length=50,
         default="our_model"
     )
+
+# ---------------------------------------------------------------------------
+# Project-created data (tables prefixed "ausme_").
+#
+# Everything above holds the client's original data and is never changed by
+# this project's pipelines. The models below store results this project
+# produced, so they can be replaced or removed without touching client data.
+# ---------------------------------------------------------------------------
+
+class MatchRun(models.Model):
+    """One imported set of researcher-opportunity matches (see `import_matches`)."""
+
+    name = models.CharField(max_length=100, unique=True)
+    imported_at = models.DateTimeField(auto_now_add=True)
+
+    embedding_model = models.CharField(max_length=255)
+    embedding_revision = models.CharField(max_length=64, blank=True)
+    generator = models.CharField(
+        max_length=100,
+        blank=True,
+        help_text="Language model that extracted the keywords and topics.",
+    )
+    scoring = models.CharField(max_length=20, blank=True)
+    description = models.TextField(blank=True)
+
+    # Matches whose semantic similarity is below this value are not shown
+    # ("no close match"). Set from the team's blind review of matches.
+    similarity_cutoff = models.FloatField(default=0.5)
+
+    # The API serves the active run; importing a new run activates it.
+    is_active = models.BooleanField(default=False)
+
+    # {opp_id: reason} for opportunities that could not be matched.
+    unmatched_opportunities = models.JSONField(default=dict, blank=True)
+
+    class Meta:
+        db_table = "ausme_match_run"
+
+    def __str__(self):
+        return self.name
+
+
+class ResearcherOpportunityMatch(models.Model):
+    """How closely one researcher's work matches one opportunity's research topics."""
+
+    run = models.ForeignKey(MatchRun, on_delete=models.CASCADE, related_name="matches")
+    researcher = models.ForeignKey(Researcher, on_delete=models.CASCADE, related_name="ausme_matches")
+    opportunity = models.ForeignKey(Opportunity, on_delete=models.CASCADE, related_name="ausme_matches")
+
+    rank_for_researcher = models.PositiveIntegerField()
+    rank_for_opportunity = models.PositiveIntegerField()
+
+    # Mean MPNet cosine similarity of the evidence links. A semantic similarity,
+    # not a probability, confidence or likelihood of funding.
+    semantic_similarity = models.FloatField()
+
+    # The value the ranks are based on (generic topics count less).
+    ranking_score = models.FloatField()
+
+    class Meta:
+        db_table = "ausme_researcher_opportunity_match"
+        constraints = [
+            models.UniqueConstraint(
+                fields=["run", "researcher", "opportunity"],
+                name="unique_match_per_run",
+            )
+        ]
+        indexes = [
+            models.Index(fields=["run", "researcher", "rank_for_researcher"]),
+            models.Index(fields=["run", "opportunity", "rank_for_opportunity"]),
+        ]
+
+
+class MatchEvidence(models.Model):
+    """One link behind a match: an opportunity topic and the researcher's closest keyword."""
+
+    match = models.ForeignKey(
+        ResearcherOpportunityMatch,
+        on_delete=models.CASCADE,
+        related_name="evidence",
+    )
+    position = models.PositiveSmallIntegerField()
+
+    opportunity_topic = models.CharField(max_length=255)
+    researcher_term = models.CharField(max_length=255)
+
+    # The paper the keyword came from (the first one, if several share it).
+    paper = models.ForeignKey(Paper, on_delete=models.SET_NULL, null=True, blank=True, related_name="+")
+    other_paper_count = models.PositiveIntegerField(default=0)
+
+    semantic_similarity = models.FloatField()
+
+    class Meta:
+        db_table = "ausme_match_evidence"
+        ordering = ["position"]

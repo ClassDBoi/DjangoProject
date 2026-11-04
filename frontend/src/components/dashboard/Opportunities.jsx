@@ -3,6 +3,7 @@ import React, { useCallback } from "react";
 import DeadlineBadge from "../common/DeadlineBadge";
 import ExpandableText from "../common/ExpandableText";
 import KeywordChips from "../common/KeywordChips";
+import MatchList from "../common/MatchList";
 import ListToolbar, { FilterSelect } from "../common/ListToolbar";
 import Pagination from "../common/Pagination";
 import {
@@ -56,6 +57,7 @@ function Opportunities() {
     });
     const opportunities = data?.results || [];
     const detail = useDetail("/opportunities/", params.selected);
+    const matches = useDetail("/opportunities/", params.selected, "matches/");
 
     const select = useCallback((id) => update({ selected: id }, { keepPage: true, push: true }), [update]);
     const deselect = useCallback(() => update({ selected: "" }, { keepPage: true }), [update]);
@@ -168,6 +170,8 @@ function Opportunities() {
                             <p style={metaStyle}><strong>Award Floor:</strong> {formatMoney(selected.award_floor)}</p>
                             <p style={metaStyle}><strong>Award Ceiling:</strong> {formatMoney(selected.award_ceiling)}</p>
                             <p style={metaStyle}><strong>Due Date:</strong> {formatDate(selected.due_date)}</p>
+
+                            <MatchList kind="opportunity" data={matches.data} loading={matches.loading} />
 
                             <ExpandableText
                                 key={`description-${selected.opp_id}`}

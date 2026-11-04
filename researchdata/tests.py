@@ -102,3 +102,92 @@ class ListEndpointTests(TestCase):
         self.assertEqual(data["papers"]["first_year"], 2015)
         self.assertEqual(data["papers"]["last_year"], 2020)
         self.assertEqual(data["opportunities"]["agencies"], ["DOT", "NSF"])
+
+
+class MatchTests(TestCase):
+    """import_matches command and the /matches/ endpoints."""
+
+    @classmethod
+    def setUpTestData(cls):
+        Researcher.objects.create(auid="R1", name="Ada Lane", department="Chemistry", college="Sciences")
+        Researcher.objects.create(auid="R2", name="Ben Cole", department="Music", college="Liberal Arts")
+        paper = Paper.objects.create(id=7, title="Biosensors for water")
+        paper.researchers.add(Researcher.objects.get(auid="R1"))
+        Opportunity.objects.create(opp_id=10, title="Sensors call", agency="NSF")
+        Opportunity.objects.create(opp_id=11, title="Career award", agency="NIH")
+        Opportunity.objects.create(opp_id=12, title="Title only", agency="CDC")
+
+    def write_file(self, mock=False):
+        import json
+        import tempfile
+        from pathlib import Path
+
+        def row(auid, opp, sim, rank_r, rank_o):
+            return {
+                "auid": auid, "opp_id": str(opp), "strongest_links_similarity": sim, "ranking_score": sim,
+                "rank_for_researcher": rank_r, "rank_for_opportunity": rank_o,
+                "evidence": [{"opportunity_topic": "Biosensors", "researcher_term": "Water Biosensor",
+                              "paper_ids": [7], "semantic_similarity": sim}],
+            }
+
+        data = {
+            "mock": mock, "embedding_model": "sentence-transformers/all-mpnet-base-v2", "scoring": "v2",
+            "opportunities_not_matched": ["11"],
+            "matches": [row("R1", 10, 0.71, 1, 1), row("R2", 10, 0.31, 1, 2)],
+        }
+        folder = Path(tempfile.mkdtemp()) / "match_v2"
+        folder.mkdir()
+        path = folder / "matches.json"
+        path.write_text(json.dumps(data), encoding="utf-8")
+        return str(path)
+
+    def run_import(self, *args):
+        from io import StringIO
+
+        from django.core.management import call_command
+        out = StringIO()
+        call_command("import_matches", *args, stdout=out)
+        return out.getvalue()
+
+    def test_dry_run_writes_nothing(self):
+        from .models import MatchRun
+        output = self.run_import(self.write_file())
+        self.assertIn("Dry run", output)
+        self.assertFalse(MatchRun.objects.exists())
+
+    def test_mock_file_is_refused(self):
+        from django.core.management.base import CommandError
+        with self.assertRaises(CommandError):
+            self.run_import(self.write_file(mock=True), "--apply")
+
+    def test_import_and_endpoints(self):
+        from .models import MatchRun
+        self.run_import(self.write_file(), "--apply")
+        run = MatchRun.objects.get()
+        self.assertEqual((run.name, run.is_active, run.similarity_cutoff), ("match_v2", True, 0.5))
+        self.assertEqual(run.unmatched_opportunities, {"11": "no_research_topics", "12": "insufficient_text"})
+
+        data = self.client.get("/api/researchers/R1/matches/").json()
+        self.assertEqual([m["opp_id"] for m in data["matches"]], [10])
+        self.assertEqual(data["matches"][0]["evidence"][0]["paper_title"], "Biosensors for water")
+
+        # Below the cutoff: no close match.
+        data = self.client.get("/api/researchers/R2/matches/").json()
+        self.assertEqual((data["matches"], data["no_close_match"]), ([], True))
+
+        data = self.client.get("/api/opportunities/10/matches/").json()
+        self.assertEqual([m["auid"] for m in data["matches"]], ["R1"])
+        data = self.client.get("/api/opportunities/11/matches/").json()
+        self.assertIn("career-stage", data["unmatched_reason"])
+        data = self.client.get("/api/opportunities/12/matches/").json()
+        self.assertIn("not enough announcement text", data["unmatched_reason"])
+
+        # Re-importing the same name replaces the run.
+        self.run_import(self.write_file(), "--apply", "--cutoff", "0.8")
+        self.assertEqual(MatchRun.objects.get().similarity_cutoff, 0.8)
+        self.assertEqual(self.client.get("/api/researchers/R1/matches/").json()["matches"], [])
+
+    def test_no_run_yet(self):
+        data = self.client.get("/api/researchers/R1/matches/").json()
+        self.assertIsNone(data["run"])
+        self.assertEqual(self.client.get("/api/researchers/NOPE/matches/").status_code, 404)

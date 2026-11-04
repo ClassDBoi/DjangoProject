@@ -59,6 +59,23 @@ Response: `{count, total_pages, current_page, results: [...]}`.
 `GET /api/opportunities/<opp_id>/` returns one opportunity with its description,
 full announcement, topics and domains.
 
+## Researcher-opportunity matches
+
+Served from the active match run (imported with `manage.py import_matches`, stored
+in the project-created `ausme_*` tables). Only matches at or above the run's
+semantic similarity cutoff are returned. Semantic similarity is not a probability
+or likelihood of funding; eligibility and deadlines are not part of it.
+
+`GET /api/researchers/<auid>/matches/?limit=3` (max 10) and
+`GET /api/opportunities/<opp_id>/matches/?limit=5` (max 25) return:
+
+| Field | Meaning |
+|---|---|
+| `run` | `{name, semantic_model, similarity_cutoff, imported_at}`, or `null` if no run has been imported |
+| `matches` | best matches first: the opportunity (or researcher), `semantic_similarity`, and `evidence`: a list of `{opportunity_topic, researcher_term, paper_id, paper_title, other_paper_count, semantic_similarity}` |
+| `no_close_match` | `true` when there are matches but none reach the cutoff |
+| `unmatched_reason` | opportunities only: why an opportunity could not be matched (no research topics, or not enough text) |
+
 ## Filter options
 
 `GET /api/filters/` returns the values used by the frontend dropdowns:

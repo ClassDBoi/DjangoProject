@@ -4,10 +4,11 @@ import { getJson, isAbortError } from "../lib/api";
 
 /**
  * Loads one record for the detail panel, e.g. useDetail("/papers/", selectedId).
+ * `suffix` loads a sub-resource, e.g. useDetail("/researchers/", auid, "matches/").
  * Returns { data, loading, error }; data is null when nothing is selected.
  */
-export default function useDetail(basePath, id) {
-    const key = id ? `${basePath}${encodeURIComponent(id)}/` : null;
+export default function useDetail(basePath, id, suffix = "") {
+    const key = id ? `${basePath}${encodeURIComponent(id)}/${suffix}` : null;
     // `key` records which record the stored result belongs to.
     const [result, setResult] = useState({ key: null, data: null, error: "" });
 
