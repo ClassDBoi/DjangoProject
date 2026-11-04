@@ -1,5 +1,4 @@
 import html
-import math
 import re
 
 from django.core.paginator import Paginator
@@ -63,10 +62,6 @@ def _paginate(queryset, request, default_size):
     return paginator, page
 
 
-RAG_CHUNK_WORDS = 500
-RAG_CHUNK_OVERLAP_WORDS = 75
-
-
 def _clean_text(value):
     """Normalize database text for dashboard word-count diagnostics."""
     if not value:
@@ -106,22 +101,6 @@ def _bin_counts(values, edges):
     return rows
 
 
-def _estimated_chunk_count(
-    words,
-    chunk_words=RAG_CHUNK_WORDS,
-    overlap_words=RAG_CHUNK_OVERLAP_WORDS,
-):
-    """Mirror the fixed-size planning estimate in analyze_dataset.py."""
-    if words <= 0:
-        return 0
-
-    if words <= chunk_words:
-        return 1
-
-    stride = chunk_words - overlap_words
-    return 1 + math.ceil((words - chunk_words) / stride)
-
-
 @api_view(['GET'])
 def dashboard_stats(request):
     papers = list(
@@ -149,7 +128,6 @@ def dashboard_stats(request):
 
     opportunity_description_words = []
     opportunity_full_announcement_words = []
-    opportunity_estimated_rag_chunks = []
 
     for opportunity in opportunities:
         description = (
@@ -158,24 +136,14 @@ def dashboard_stats(request):
             or ""
         )
         full_announcement = opportunity['full_announcement'] or ""
-        full_words = _word_count(full_announcement)
 
         opportunity_description_words.append(_word_count(description))
-        opportunity_full_announcement_words.append(full_words)
-        opportunity_estimated_rag_chunks.append(
-            _estimated_chunk_count(full_words)
-        )
+        opportunity_full_announcement_words.append(_word_count(full_announcement))
 
     return Response({
         "researchers": Researcher.objects.count(),
         "papers": len(papers),
         "opportunities": len(opportunities),
-        "papers_with_abstracts": sum(
-            words > 0 for words in paper_abstract_words
-        ),
-        "opportunities_with_full_announcements": sum(
-            words > 0 for words in opportunity_full_announcement_words
-        ),
 
         # These bins mirror the current Scripts/analyze_dataset.py output.
         "paper_title_lengths": _bin_counts(
@@ -194,14 +162,6 @@ def dashboard_stats(request):
             opportunity_full_announcement_words,
             [0, 1, 2500, 5000, 10000, 20000, 30000],
         ),
-        "funding_rag_chunk_estimates": _bin_counts(
-            opportunity_estimated_rag_chunks,
-            [0, 1, 6, 11, 21, 41, 61],
-        ),
-        "rag_chunk_assumptions": {
-            "chunk_words": RAG_CHUNK_WORDS,
-            "overlap_words": RAG_CHUNK_OVERLAP_WORDS,
-        },
     })
 
 
