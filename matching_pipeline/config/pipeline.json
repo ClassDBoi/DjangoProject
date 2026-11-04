@@ -1,0 +1,27 @@
+{
+  "generator": {
+    "model_id": "qwen3:4b",
+    "think": false,
+    "notes": "Qwen3 4B through a local Ollama server. Chosen over Phi-4-mini in a blind team review (October 2026). Thinking mode is off; the model writes its reasoning in the 'analysis' field."
+  },
+  "embedding": {
+    "model": "sentence-transformers/all-mpnet-base-v2",
+    "revision": "e8c3b32edf5434bc2275fc9bab85f82640a19130",
+    "notes": "Chosen in October 2026 for the closest agreement with human ratings of short research phrases. Validated only for comparing short concepts (keywords, topics), not whole documents."
+  },
+  "generation": {
+    "temperature": 0,
+    "seed": 42,
+    "num_ctx": 4096,
+    "max_new_tokens": 900,
+    "window_words": 1400,
+    "min_abstract_words": 40,
+    "ollama_url": "http://127.0.0.1:11434",
+    "request_timeout_s": 900
+  },
+  "matching": {
+    "evidence_links": 3,
+    "max_topics_per_opportunity": 10,
+    "near_duplicate_similarity": 0.85
+  }
+}

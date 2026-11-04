@@ -1,18 +1,19 @@
-"""Import researcher-opportunity matches produced by the slm_benchmark pipeline.
+"""Import researcher-opportunity matches produced by the matching pipeline.
 
 Source: the matches.json written by
 
-    python .\\slm_benchmark\\run_slm_benchmark.py match --papers-run papers_full \\
-        --opps-run opps_full --scoring v2 --name match_v2
+    python matching_pipeline\\run_pipeline.py match
+
+(see matching_pipeline/README.md).
 
 Usage (dry run by default; nothing is written without --apply):
 
-    python manage.py import_matches slm_benchmark\\results\\matching\\match_v2\\matches.json
+    python manage.py import_matches matching_pipeline\\runs\\matches\\matches.json
     python manage.py import_matches <file> --apply
 
 Behavior:
 - Writes only to the project-created ausme_* tables; client tables are never changed.
-- The run is named after its folder (e.g. "match_v2") unless --name is given.
+- The run is named after its folder (e.g. "matches") unless --name is given.
   Importing a run with an existing name replaces that run.
 - The imported run becomes the active run served by the API (use --no-activate to skip).
 - --cutoff sets the semantic similarity below which matches are not shown
@@ -70,7 +71,7 @@ class Command(BaseCommand):
             raise CommandError("The file has no 'matches' list.")
         if "evidence" not in rows[0]:
             raise CommandError("These matches have no structured evidence. Re-run the match step "
-                               "with the current slm_benchmark version.")
+                               "with matching_pipeline/run_pipeline.py.")
 
         name = options["name"] or path.parent.name
         cutoff = options["cutoff"]

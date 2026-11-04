@@ -1,6 +1,5 @@
-# Virtual environment
-.venv/
-.venv-bge/
+# Virtual environments (.venv for Django, .venv-pipeline for the matching pipeline)
+.venv*/
 # Environment variables / secrets
 .env
 
@@ -24,5 +23,5 @@ frontend/dist/
 frontend/.env
 data/*.json
 
-.venv-benchmark*/
-benchmark/results/*/embeddings/
+# Matching pipeline outputs contain client text
+matching_pipeline/runs/

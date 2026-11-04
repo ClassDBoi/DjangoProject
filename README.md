@@ -1,12 +1,13 @@
 # AUSME: Researcher to Funding Opportunity Matching
 
-Auburn University Senior Design project. A web application for browsing Auburn
-researchers, their papers and federal funding opportunities, with semantic
-matching of researchers to opportunities under development.
+Auburn University Senior Design project (fall 2026). A web application for browsing
+Auburn researchers, their papers and federal funding opportunities, and for seeing which
+opportunities fit each researcher's work, with the evidence for every match.
 
 - **Backend:** Django + Django REST Framework (`SeniorDesign_AUSME/` project, `researchdata/` app)
 - **Database:** shared MySQL (connection settings in `.env`, never committed)
 - **Frontend:** React + Vite (`frontend/`)
+- **Matching pipeline:** Qwen3-4B (Ollama) + MPNet embeddings (`matching_pipeline/`), run offline
 
 ## Repository layout
 
@@ -15,8 +16,9 @@ matching of researchers to opportunities under development.
 | `SeniorDesign_AUSME/` | Django project: settings, URL routes |
 | `researchdata/` | Django app: models, API views, management commands, tests |
 | `frontend/` | React/Vite web app (see `frontend/README.md`) |
-| `benchmark/` | Standalone embedding-model benchmark (no database access) |
+| `matching_pipeline/` | Offline pipeline that generates topics and matches (see `matching_pipeline/README.md`) |
 | `docs/API.md` | REST API reference |
+| `docs/DECISIONS.md` | How the models, filters, scoring and cutoffs were chosen, with the evidence |
 | `start-dev.ps1` | Starts Django and Vite together on Windows |
 | `data/` | Client data files. **Gitignored: never commit them.** Obtain them from the team. |
 
@@ -85,15 +87,33 @@ match keeps its evidence (which topic matched which keyword, and from which pape
 Scores are semantic similarity, not a probability or likelihood of funding;
 eligibility and deadlines are not checked.
 
-The matches are produced outside the web app by the `slm_benchmark` pipeline and
-imported into the project-created `ausme_*` tables:
+The matches are produced outside the web app by `matching_pipeline/` (setup and steps in
+`matching_pipeline/README.md`) and imported into the project-created `ausme_*` tables:
 
 ```powershell
 # Dry run first: checks every researcher, opportunity and paper exists and prints counts
-python manage.py import_matches slm_benchmark\results\matching\match_v2\matches.json
-python manage.py import_matches slm_benchmark\results\matching\match_v2\matches.json --apply
+python manage.py import_matches matching_pipeline\runs\matches\matches.json --name matches_YYYY_MM
+python manage.py import_matches matching_pipeline\runs\matches\matches.json --name matches_YYYY_MM --apply
 ```
 
 The imported run becomes the one the website shows. Matches below its semantic
 similarity cutoff (default 0.50, chosen from the team's blind review of matches)
-are shown as "No close match".
+are shown as "No close match". See `docs/DECISIONS.md` for how this was decided.
+
+## Database updates
+
+The shared database is already loaded; these are for a new or rebuilt database.
+
+- `python manage.py import_dataset data\senior_design_subset.json`: loads the client's researchers,
+  papers and opportunities (writes immediately; updates existing rows by ID).
+- `python manage.py import_full_announcements --input data\senior_design_full_announcements.json`:
+  adds full announcement text (dry run by default, `--apply` to write).
+- `python manage.py import_matches`: loads a matching run (above).
+- Schema changes need the privileged database account. Set it for one PowerShell session only
+  (these override `.env`):
+
+  ```powershell
+  $env:DB_USER = "<privileged user>"; $env:DB_PASSWORD = "<password>"
+  python manage.py migrate
+  Remove-Item Env:DB_USER, Env:DB_PASSWORD
+  ```

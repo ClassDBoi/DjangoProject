@@ -1,0 +1,7 @@
+# Matching pipeline environment (.venv-pipeline). Kept separate from the Django .venv.
+# These are the versions the November 2026 matches were produced with; do not upgrade casually.
+sentence-transformers==5.7.0
+transformers==4.57.6
+numpy
+# torch is installed by sentence-transformers (CPU build is enough).
+# Topic generation calls a local Ollama server with the Python standard library only.
