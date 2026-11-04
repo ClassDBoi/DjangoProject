@@ -25,6 +25,7 @@ set, requests go to `/api` and the dev server proxies them to `http://127.0.0.1:
 | `src/hooks/` | Data loading (`useList`, `useDetail`, `useFilterOptions`), URL state (`useListParams`) and small UI helpers |
 | `src/lib/` | API client (`api.js`) and display formatting (`format.js`) |
 | `src/config/collegeImages.js` | Maps college names to images in `public/colleges/` |
+| `src/config/matchStrength.js` | Where a match counts as "Strong" vs "Possible" (from the team's review of matches) |
 
 ## How the list pages work
 
@@ -39,6 +40,14 @@ set, requests go to `/api` and the dev server proxies them to `http://127.0.0.1:
 - **Detail panels** stay beside the list while it scrolls, below the sticky navigation
   bar (`--nav-height` in `src/index.css`). On narrow screens the panel sits below the
   list and the page scrolls to it when an item is selected.
+
+## How match strength is shown
+
+Matches show words, not numbers: a "Strong match" or "Possible match" badge, and
+evidence lines that read "closely matches" or "is related to". Raw semantic
+similarity scores are easy to misread as percentages or probabilities, so they appear
+only when the user hovers over, clicks or taps a badge or evidence line
+(`ScoreReveal`). Keyword chips reveal their client-supplied scores the same way.
 
 ## Adding college images
 

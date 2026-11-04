@@ -2,10 +2,17 @@ import React from "react";
 import { Link } from "react-router-dom";
 
 import DeadlineBadge from "./DeadlineBadge";
+import ScoreReveal from "./ScoreReveal";
 import { linkStyle, mutedStyle, sectionTitleStyle } from "./styles";
+import { linkPhrase, matchStrength } from "../../config/matchStrength";
 
 /**
  * Matches for the detail panels, with the evidence behind each one.
+ *
+ * Strength is shown in words ("Strong match", "closely matches") rather than as
+ * numbers, which are easy to misread as percentages or probabilities. The semantic
+ * similarity behind each label appears on hover, click or tap (ScoreReveal).
+ * Thresholds: src/config/matchStrength.js.
  *
  * @param {"researcher" | "opportunity"} kind whose panel this is
  * @param {object} data response of /api/researchers/<auid>/matches/ or
@@ -23,7 +30,6 @@ function MatchList({ kind, data, loading }) {
     }
 
     const forResearcher = kind === "researcher";
-    const cutoff = Number(data.run.similarity_cutoff).toFixed(2);
 
     return (
         <section>
@@ -34,64 +40,78 @@ function MatchList({ kind, data, loading }) {
                 {forResearcher
                     ? "Opportunities whose research topics are closest to keywords from this researcher's papers."
                     : "Researchers whose paper keywords are closest to this opportunity's research topics."}
-                {" "}Semantic similarity (0 to 1) measures how close the topics are; it is not a likelihood of
-                funding, and eligibility and deadlines are not checked.
+                {" "}"Strong" and "possible" describe how closely the research topics overlap, not the
+                chance of funding; eligibility and deadlines are not checked. Tap or hover over a label
+                to see the underlying score.
             </p>
 
             {data.unmatched_reason && <p style={mutedStyle}>{data.unmatched_reason}</p>}
 
             {data.no_close_match && (
                 <p style={mutedStyle}>
-                    No close match {forResearcher ? "among the current funding opportunities" : "among the current researchers"}
-                    {" "}(semantic similarity below {cutoff}).
+                    No close match {forResearcher ? "among the current funding opportunities" : "among the current researchers"}.
                 </p>
             )}
 
-            {data.matches.map((match) => (
-                <div key={forResearcher ? match.opp_id : match.auid} style={matchStyle}>
-                    <div style={headerStyle}>
-                        {forResearcher ? (
-                            <Link to={`/opportunities?selected=${match.opp_id}`} style={{ ...linkStyle, fontSize: "15px" }}>
-                                {match.title}
-                            </Link>
-                        ) : (
-                            <Link to={`/researchers?selected=${encodeURIComponent(match.auid)}`} style={{ ...linkStyle, fontSize: "15px" }}>
-                                {match.name}
-                            </Link>
-                        )}
-                        {forResearcher && <DeadlineBadge dueDate={match.due_date} />}
+            {data.matches.map((match) => {
+                const strength = matchStrength(match.semantic_similarity);
+                return (
+                    <div
+                        key={forResearcher ? match.opp_id : match.auid}
+                        style={{ ...matchStyle, borderLeftColor: strengthColors[strength.key].accent }}
+                    >
+                        <div style={headerStyle}>
+                            {forResearcher ? (
+                                <Link to={`/opportunities?selected=${match.opp_id}`} style={{ ...linkStyle, fontSize: "15px" }}>
+                                    {match.title}
+                                </Link>
+                            ) : (
+                                <Link to={`/researchers?selected=${encodeURIComponent(match.auid)}`} style={{ ...linkStyle, fontSize: "15px" }}>
+                                    {match.name}
+                                </Link>
+                            )}
+                            {forResearcher && <DeadlineBadge dueDate={match.due_date} />}
+                        </div>
+
+                        <div style={metaRowStyle}>
+                            <ScoreReveal
+                                score={match.semantic_similarity}
+                                style={{ ...badgeStyle, ...strengthColors[strength.key].badge }}
+                            >
+                                <span style={{ whiteSpace: "nowrap" }}>{strength.label}</span>
+                            </ScoreReveal>
+                            <span style={{ ...mutedStyle, fontSize: "13px" }}>
+                                {forResearcher ? match.agency || "Agency not available" : match.department || "Department not available"}
+                            </span>
+                        </div>
+
+                        <p style={{ margin: "0 0 4px", fontSize: "13px", fontWeight: 600 }}>Matched because:</p>
+                        <ul style={evidenceListStyle}>
+                            {match.evidence.map((link) => (
+                                <li key={`${link.opportunity_topic}-${link.researcher_term}`} style={{ marginBottom: "6px" }}>
+                                    <ScoreReveal score={link.semantic_similarity}>
+                                        <span style={topicStyle}>{link.opportunity_topic}</span>
+                                        {` ${linkPhrase(link.semantic_similarity)} `}
+                                        <span style={topicStyle}>{link.researcher_term}</span>
+                                    </ScoreReveal>
+                                    {link.paper_id && (
+                                        <>
+                                            <br />
+                                            <span style={mutedStyle}>from </span>
+                                            <Link to={`/papers?selected=${link.paper_id}`} style={{ ...linkStyle, fontWeight: 400 }}>
+                                                {link.paper_title}
+                                            </Link>
+                                            {link.other_paper_count > 0 && (
+                                                <span style={mutedStyle}> and {link.other_paper_count} more</span>
+                                            )}
+                                        </>
+                                    )}
+                                </li>
+                            ))}
+                        </ul>
                     </div>
-
-                    <p style={{ ...mutedStyle, margin: "4px 0 8px", fontSize: "13px" }}>
-                        {forResearcher ? match.agency || "Agency not available" : match.department || "Department not available"}
-                        {" · "}Semantic similarity {Number(match.semantic_similarity).toFixed(2)}
-                    </p>
-
-                    <p style={{ margin: "0 0 4px", fontSize: "13px", fontWeight: 600 }}>Matched because:</p>
-                    <ul style={evidenceListStyle}>
-                        {match.evidence.map((link) => (
-                            <li key={`${link.opportunity_topic}-${link.researcher_term}`} style={{ marginBottom: "4px" }}>
-                                <span style={topicStyle}>{link.opportunity_topic}</span>
-                                {" ↔ "}
-                                <span style={topicStyle}>{link.researcher_term}</span>
-                                <span style={mutedStyle}> ({Number(link.semantic_similarity).toFixed(2)})</span>
-                                {link.paper_id && (
-                                    <>
-                                        <br />
-                                        <span style={mutedStyle}>from </span>
-                                        <Link to={`/papers?selected=${link.paper_id}`} style={{ ...linkStyle, fontWeight: 400 }}>
-                                            {link.paper_title}
-                                        </Link>
-                                        {link.other_paper_count > 0 && (
-                                            <span style={mutedStyle}> and {link.other_paper_count} more</span>
-                                        )}
-                                    </>
-                                )}
-                            </li>
-                        ))}
-                    </ul>
-                </div>
-            ))}
+                );
+            })}
         </section>
     );
 }
@@ -102,6 +122,34 @@ const matchStyle = {
     border: "1px solid #eee",
     borderLeft: "4px solid var(--auburn-orange)",
     borderRadius: "8px",
+};
+
+// Color always comes with a word ("Strong match"), so meaning never depends on color alone.
+const strengthColors = {
+    strong: {
+        accent: "var(--auburn-orange)",
+        badge: { backgroundColor: "#fff1e6", color: "#b54708", border: "1px solid #f3b28f" },
+    },
+    possible: {
+        accent: "#cbd5e1",
+        badge: { backgroundColor: "#f1f5f9", color: "#475569", border: "1px solid #d8dee6" },
+    },
+};
+
+const badgeStyle = {
+    display: "inline-block",
+    padding: "3px 10px",
+    borderRadius: "999px",
+    fontSize: "12px",
+    fontWeight: 700,
+};
+
+const metaRowStyle = {
+    display: "flex",
+    flexWrap: "wrap",
+    alignItems: "center",
+    gap: "10px",
+    margin: "6px 0 10px",
 };
 
 const headerStyle = {

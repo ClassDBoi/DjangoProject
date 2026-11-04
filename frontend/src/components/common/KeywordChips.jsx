@@ -1,8 +1,10 @@
 import React from "react";
 
+import ScoreReveal from "./ScoreReveal";
+
 /**
- * Keywords or topics as small chips. The score, when given, is shown on hover
- * (the client's scores are kept but not emphasized).
+ * Keywords or topics as small chips. The score, when given, is shown on hover or
+ * when the chip is clicked or tapped (the client's scores are kept but not emphasized).
  *
  * @param {{label: string, score?: number}[]} items
  */
@@ -14,13 +16,15 @@ function KeywordChips({ items }) {
     return (
         <div style={wrapStyle}>
             {items.map((item, index) => (
-                <span
+                <ScoreReveal
                     key={`${item.label}-${index}`}
+                    score={item.score}
+                    scoreLabel="Score"
+                    digits={3}
                     style={chipStyle}
-                    title={item.score !== undefined && item.score !== null ? `Score: ${Number(item.score).toFixed(3)}` : undefined}
                 >
                     {item.label}
-                </span>
+                </ScoreReveal>
             ))}
         </div>
     );
