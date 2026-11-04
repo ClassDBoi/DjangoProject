@@ -9,8 +9,10 @@ import { NOT_AVAILABLE, hasText } from "../../lib/format";
  * @param {string} title section heading
  * @param {string} text the full text
  * @param {number} [previewWords=60] words shown before "Read more"
+ * @param {string} [noun="text"] what the text is ("abstract"), used in the note shown
+ *   when the stored text was itself cut off at the source
  */
-function ExpandableText({ title, text, previewWords = 60 }) {
+function ExpandableText({ title, text, previewWords = 60, noun = "text" }) {
     // Parents pass key={text} so a new item always starts collapsed.
     const [expanded, setExpanded] = useState(false);
 
@@ -29,12 +31,22 @@ function ExpandableText({ title, text, previewWords = 60 }) {
     // Cut after the Nth word but keep the original line breaks in the preview.
     const cut = isLong ? fullText.match(new RegExp(`^(?:\\S+\\s+){${previewWords - 1}}\\S+`))?.[0] : null;
     const preview = cut ? `${cut}…` : fullText;
+    // Much of the client data was collected as snippets that end in "…": the stored text
+    // itself stops there, so say so instead of letting it look like a display problem.
+    const sourceIsCut = /(\.\.\.|…)$/.test(fullText);
+    const showing = expanded || !isLong;
 
     return (
         <section style={sectionStyle}>
             <h3 style={titleStyle}>{title}</h3>
 
-            <div style={textStyle}>{expanded || !isLong ? fullText : preview}</div>
+            <div style={textStyle}>{showing ? fullText : preview}</div>
+
+            {showing && sourceIsCut && (
+                <p style={noteStyle}>
+                    This is all of the text in the source data; the original {noun} is longer.
+                </p>
+            )}
 
             {isLong && (
                 <button
@@ -78,6 +90,13 @@ const buttonStyle = {
     color: "var(--auburn_second_blue)",
     cursor: "pointer",
     fontWeight: 600,
+};
+
+const noteStyle = {
+    margin: "8px 0 0",
+    fontSize: "13px",
+    fontStyle: "italic",
+    color: "var(--text-muted)",
 };
 
 const emptyStyle = {

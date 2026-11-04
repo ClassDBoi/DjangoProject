@@ -17,6 +17,9 @@ import useListParams from "../../hooks/useListParams";
 import useScrollToDetailsOnSmallScreens from "../../hooks/useScrollToDetailsOnSmallScreens";
 import { NOT_AVAILABLE, formatDate } from "../../lib/format";
 
+// Papers shown in the researcher panel; the rest are one click away on the Papers page.
+const PAPERS_SHOWN = 3;
+
 // Every URL parameter this page uses, with its default.
 const DEFAULTS = { search: "", college: "", department: "", sort: "name", order: "asc", selected: "" };
 
@@ -58,9 +61,13 @@ function Researchers() {
         || params.sort !== DEFAULTS.sort || params.order !== DEFAULTS.order);
 
     const selected = detail.data;
+    // Most recent first.
     const papers = [...(selected?.papers || [])].sort(
         (a, b) => String(b.publication_date || "").localeCompare(String(a.publication_date || ""))
     );
+    const allPapersLink = selected
+        ? `/papers?researcher=${encodeURIComponent(selected.auid)}&sort=date&order=desc`
+        : "";
 
     return (
         <div style={pageStyle}>
@@ -144,10 +151,17 @@ function Researchers() {
                             <p style={metaStyle}><strong>College:</strong> {selected.college || NOT_AVAILABLE}</p>
                             <p style={metaStyle}><strong>AUID:</strong> {selected.auid}</p>
 
-                            <h3 style={sectionTitleStyle}>Research Papers ({papers.length})</h3>
+                            <h3 style={sectionTitleStyle}>
+                                Research Papers ({papers.length})
+                                {papers.length > PAPERS_SHOWN && (
+                                    <span style={{ ...mutedStyle, fontWeight: 400, fontSize: "14px" }}>
+                                        {" "}· showing the {PAPERS_SHOWN} most recent
+                                    </span>
+                                )}
+                            </h3>
 
                             {papers.length > 0 ? (
-                                papers.map((paper) => (
+                                papers.slice(0, PAPERS_SHOWN).map((paper) => (
                                     <div key={paper.id} style={paperStyle}>
                                         <Link to={`/papers?selected=${paper.id}`} style={{ ...linkStyle, fontSize: "16px" }}>
                                             {paper.title}
@@ -164,6 +178,7 @@ function Researchers() {
                                             title="Abstract"
                                             text={paper.abstract}
                                             previewWords={40}
+                                            noun="abstract"
                                         />
 
                                         <KeywordChips
@@ -173,6 +188,13 @@ function Researchers() {
                                 ))
                             ) : (
                                 <p>No associated papers found.</p>
+                            )}
+
+                            {papers.length > PAPERS_SHOWN && (
+                                <Link to={allPapersLink} style={allPapersButtonStyle}>
+                                    View all {papers.length} papers by {selected.name}
+                                    {" "}<i className="fa-solid fa-arrow-right" />
+                                </Link>
                             )}
                         </div>
                     )}
@@ -191,6 +213,17 @@ const cardHeaderStyle = {
     alignItems: "center",
     gap: "14px",
     marginBottom: "8px",
+};
+
+const allPapersButtonStyle = {
+    display: "inline-block",
+    marginTop: "18px",
+    padding: "10px 16px",
+    borderRadius: "8px",
+    backgroundColor: "var(--auburn-navy)",
+    color: "white",
+    textDecoration: "none",
+    fontWeight: 600,
 };
 
 const paperStyle = {

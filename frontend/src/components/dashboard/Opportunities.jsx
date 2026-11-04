@@ -174,6 +174,7 @@ function Opportunities() {
                                 title="Description"
                                 text={selected.description}
                                 previewWords={80}
+                                noun="description"
                             />
 
                             <ExpandableText
@@ -181,6 +182,7 @@ function Opportunities() {
                                 title="Full Research Announcement"
                                 text={selected.full_announcement}
                                 previewWords={120}
+                                noun="announcement"
                             />
 
                             <h3 style={sectionTitleStyle}>Topics</h3>

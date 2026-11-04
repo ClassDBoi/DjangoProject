@@ -166,6 +166,7 @@ function Papers() {
                                 title="Abstract / Research Description"
                                 text={selected.abstract}
                                 previewWords={80}
+                                noun="abstract"
                             />
 
                             <h3 style={sectionTitleStyle}>Researchers</h3>
