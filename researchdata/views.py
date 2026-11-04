@@ -3,11 +3,64 @@ import math
 import re
 
 from django.core.paginator import Paginator
+from django.db.models import Count, F, Max, Min, Q
+from django.db.models.functions import ExtractYear
+from django.utils import timezone
 from django.utils.html import strip_tags
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
 
 from .models import Researcher, Paper, Opportunity
+
+
+# ---------------------------------------------------------------------------
+# Shared helpers for the list endpoints (search, filters, sorting, paging).
+#
+# Every list endpoint accepts:
+#   search=<text>      case-insensitive match across several fields
+#   sort=<key>         one of the keys in that view's SORT_FIELDS
+#   order=asc|desc     sort direction (default asc)
+# Paginated endpoints also accept page=<n> and page_size=<n> (max 100).
+# Unknown sort keys fall back to the default; bad numbers are ignored.
+# ---------------------------------------------------------------------------
+
+MAX_PAGE_SIZE = 100
+
+
+def _apply_sort(queryset, request, sort_fields, default_key):
+    """Order by a whitelisted field; empty values always sort last."""
+    key = request.GET.get("sort", default_key)
+    field = sort_fields.get(key, sort_fields[default_key])
+    descending = request.GET.get("order", "asc").lower() == "desc"
+    expression = F(field).desc(nulls_last=True) if descending else F(field).asc(nulls_last=True)
+    # The primary key breaks ties so paging is stable.
+    return queryset.order_by(expression, "pk")
+
+
+def _int_param(request, name, default=None, minimum=None, maximum=None):
+    try:
+        value = int(request.GET.get(name, ""))
+    except ValueError:
+        return default
+    if minimum is not None:
+        value = max(minimum, value)
+    if maximum is not None:
+        value = min(maximum, value)
+    return value
+
+
+def _float_param(request, name):
+    try:
+        return float(request.GET.get(name, ""))
+    except ValueError:
+        return None
+
+
+def _paginate(queryset, request, default_size):
+    page_size = _int_param(request, "page_size", default_size, 1, MAX_PAGE_SIZE)
+    paginator = Paginator(queryset, page_size)
+    page = paginator.get_page(request.GET.get("page", 1))
+    return paginator, page
 
 
 RAG_CHUNK_WORDS = 500
@@ -152,14 +205,50 @@ def dashboard_stats(request):
     })
 
 
+RESEARCHER_SORT_FIELDS = {
+    "name": "name",
+    "auid": "auid",
+    "department": "department",
+    "college": "college",
+    "papers": "paper_count",
+}
+
+
 @api_view(['GET'])
 def researcher_list(request):
-    search = request.GET.get('search', '').strip()
+    """All researchers (not paginated: the list is small and used for dropdowns).
 
-    researchers = Researcher.objects.all().order_by('name')
+    Query parameters:
+        search      matches name, AUID, title, department or college
+        college     exact college name
+        department  exact department name
+        sort        name (default), auid, department, college, papers
+        order       asc (default) or desc
+    """
+    search = request.GET.get('search', '').strip()
+    college = request.GET.get('college', '').strip()
+    department = request.GET.get('department', '').strip()
+
+    researchers = Researcher.objects.annotate(
+        paper_count=Count('papers', distinct=True)
+    )
 
     if search:
-        researchers = researchers.filter(name__icontains=search)
+        researchers = researchers.filter(
+            Q(name__icontains=search)
+            | Q(auid__icontains=search)
+            | Q(title__icontains=search)
+            | Q(department__icontains=search)
+            | Q(college__icontains=search)
+        )
+
+    if college:
+        researchers = researchers.filter(college=college)
+
+    if department:
+        researchers = researchers.filter(department=department)
+
+    researchers = _apply_sort(researchers, request, RESEARCHER_SORT_FIELDS, "name")
 
     data = []
 
@@ -170,6 +259,7 @@ def researcher_list(request):
             "title": researcher.title,
             "department": researcher.department,
             "college": researcher.college,
+            "paper_count": researcher.paper_count,
         })
 
     return Response(data)
@@ -218,22 +308,58 @@ def researcher_detail(request, auid):
     })
 
 
+PAPER_SORT_FIELDS = {
+    "title": "title",
+    "date": "publication_date",
+    "citations": "total_citations",
+    "journal": "published_in",
+}
+
+
 @api_view(['GET'])
 def paper_list(request):
+    """Paginated papers.
+
+    Query parameters:
+        search         matches title, authors, journal or a keyword
+        researcher     AUID of an associated researcher
+        year_from      earliest publication year (inclusive)
+        year_to        latest publication year (inclusive)
+        min_citations  minimum total citations
+        sort           title (default), date, citations, journal
+        order          asc (default) or desc
+        page, page_size  (default 20 per page, max 100)
+    """
     search = request.GET.get('search', '').strip()
     researcher = request.GET.get('researcher', '').strip()
+    year_from = _int_param(request, 'year_from')
+    year_to = _int_param(request, 'year_to')
+    min_citations = _int_param(request, 'min_citations')
 
-    papers = Paper.objects.all().order_by('title')
+    papers = Paper.objects.all()
 
     if search:
-        papers = papers.filter(title__icontains=search)
+        papers = papers.filter(
+            Q(title__icontains=search)
+            | Q(authors_display__icontains=search)
+            | Q(published_in__icontains=search)
+            | Q(keywords__keyword__icontains=search)
+        ).distinct()
 
     if researcher:
         papers = papers.filter(researchers__auid=researcher)
 
-    paginator = Paginator(papers, 20)
-    page_number = request.GET.get('page', 1)
-    page = paginator.get_page(page_number)
+    if year_from is not None:
+        papers = papers.filter(publication_date__year__gte=year_from)
+
+    if year_to is not None:
+        papers = papers.filter(publication_date__year__lte=year_to)
+
+    if min_citations is not None:
+        papers = papers.filter(total_citations__gte=min_citations)
+
+    papers = _apply_sort(papers, request, PAPER_SORT_FIELDS, "title")
+    paginator, page = _paginate(papers, request, 20)
 
     data = []
 
@@ -295,18 +421,66 @@ def paper_detail(request, paper_id):
 
 # Funding opportunity API
 
+OPPORTUNITY_SORT_FIELDS = {
+    "title": "title",
+    "due_date": "due_date",
+    "funding": "estimated_funding",
+    "ceiling": "award_ceiling",
+    "agency": "agency",
+}
+
+
 @api_view(['GET'])
 def opportunity_list(request):
-    search = request.GET.get('search', '').strip()
+    """Paginated funding opportunities.
 
-    opportunities = Opportunity.objects.all().order_by('title')
+    Query parameters:
+        search        matches title, agency, category or description
+        agency        exact agency value
+        category      exact category value
+        status        open (due date today or later) or closed
+        min_funding   minimum estimated total funding (USD)
+        max_funding   maximum estimated total funding (USD)
+        sort          title (default), due_date, funding, ceiling, agency
+        order         asc (default) or desc
+        page, page_size  (default 10 per page, max 100)
+    """
+    search = request.GET.get('search', '').strip()
+    agency = request.GET.get('agency', '').strip()
+    category = request.GET.get('category', '').strip()
+    status = request.GET.get('status', '').strip().lower()
+    min_funding = _float_param(request, 'min_funding')
+    max_funding = _float_param(request, 'max_funding')
+
+    opportunities = Opportunity.objects.all()
 
     if search:
-        opportunities = opportunities.filter(title__icontains=search)
+        opportunities = opportunities.filter(
+            Q(title__icontains=search)
+            | Q(agency__icontains=search)
+            | Q(category__icontains=search)
+            | Q(description__icontains=search)
+        )
 
-    paginator = Paginator(opportunities, 10)
-    page_number = request.GET.get('page', 1)
-    page = paginator.get_page(page_number)
+    if agency:
+        opportunities = opportunities.filter(agency=agency)
+
+    if category:
+        opportunities = opportunities.filter(category=category)
+
+    if status == 'open':
+        opportunities = opportunities.filter(due_date__gte=timezone.now())
+    elif status == 'closed':
+        opportunities = opportunities.filter(due_date__lt=timezone.now())
+
+    if min_funding is not None:
+        opportunities = opportunities.filter(estimated_funding__gte=min_funding)
+
+    if max_funding is not None:
+        opportunities = opportunities.filter(estimated_funding__lte=max_funding)
+
+    opportunities = _apply_sort(opportunities, request, OPPORTUNITY_SORT_FIELDS, "title")
+    paginator, page = _paginate(opportunities, request, 10)
 
     data = []
 
@@ -379,4 +553,52 @@ def opportunity_detail(request, opp_id):
             }
             for domain in opportunity.domains.all()
         ]
+    })
+
+
+@api_view(['GET'])
+def filter_options(request):
+    """Values for the frontend filter dropdowns, read from the live data."""
+
+    def distinct_values(queryset, field):
+        return list(
+            queryset.exclude(**{f"{field}__isnull": True})
+            .exclude(**{field: ""})
+            .order_by(field)
+            .values_list(field, flat=True)
+            .distinct()
+        )
+
+    years = Paper.objects.exclude(publication_date__isnull=True).aggregate(
+        first=Min(ExtractYear('publication_date')),
+        last=Max(ExtractYear('publication_date')),
+    )
+    funding = Opportunity.objects.aggregate(
+        low=Min('estimated_funding'),
+        high=Max('estimated_funding'),
+    )
+
+    departments = (
+        Researcher.objects.exclude(department__isnull=True)
+        .exclude(department="")
+        .order_by('department')
+        .values('department', 'college')
+        .distinct()
+    )
+
+    return Response({
+        "researchers": {
+            "colleges": distinct_values(Researcher.objects, 'college'),
+            "departments": list(departments),
+        },
+        "papers": {
+            "first_year": years["first"],
+            "last_year": years["last"],
+        },
+        "opportunities": {
+            "agencies": distinct_values(Opportunity.objects, 'agency'),
+            "categories": distinct_values(Opportunity.objects, 'category'),
+            "min_funding": funding["low"],
+            "max_funding": funding["high"],
+        },
     })

@@ -11,10 +11,10 @@ const links = [
 
 function Navigation() {
     return (
-        <nav style={navStyle}>
+        <nav className="app-nav" style={navStyle}>
             <div style={brandStyle}>AUSME Research System</div>
 
-            <div style={linksStyle}>
+            <div className="app-nav-links" style={linksStyle}>
                 {links.map((link) => (
                     <NavLink
                         key={link.path}
@@ -33,7 +33,15 @@ function Navigation() {
     );
 }
 
+// Sticky: the bar stays at the top of the window while the page scrolls.
+// Its height is var(--nav-height) in index.css; the detail panels use it to sit below the bar.
 const navStyle = {
+    position: "sticky",
+    top: 0,
+    zIndex: 100,
+    minHeight: "var(--nav-height)",
+    boxSizing: "border-box",
+    boxShadow: "0 2px 8px rgba(12, 35, 64, 0.25)",
     display: "flex",
     alignItems: "center",
     justifyContent: "space-between",

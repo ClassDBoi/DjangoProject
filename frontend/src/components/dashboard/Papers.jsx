@@ -1,258 +1,197 @@
-import React, { useEffect, useState } from "react";
+import React, { useCallback } from "react";
+import { Link } from "react-router-dom";
 
-import CollapsibleText from "./CollapsibleText";
+import ExpandableText from "../common/ExpandableText";
+import KeywordChips from "../common/KeywordChips";
+import ListToolbar, { FilterSelect } from "../common/ListToolbar";
+import Pagination from "../common/Pagination";
+import {
+    cardStyle, detailCardStyle, detailColumnStyle, layoutStyle, linkStyle, listColumnStyle,
+    metaStyle, mutedStyle, pageStyle, sectionTitleStyle, selectedCardStyle,
+} from "../common/styles";
 import useDeselectOnOutsideClick from "./useDeselectOnOutsideClick";
+import useDetail from "../../hooks/useDetail";
+import useFilterOptions from "../../hooks/useFilterOptions";
+import useList from "../../hooks/useList";
+import useListParams from "../../hooks/useListParams";
+import useScrollToDetailsOnSmallScreens from "../../hooks/useScrollToDetailsOnSmallScreens";
+import { NOT_AVAILABLE, formatDate } from "../../lib/format";
 
-// Falls back to the Vite dev-server proxy (/api) when VITE_API_BASE is not set.
-const API_BASE = (import.meta.env.VITE_API_BASE || "/api").replace(/\/+$/, "");
+// Every URL parameter this page uses, with its default.
+const DEFAULTS = {
+    search: "", researcher: "", year_from: "", year_to: "", min_citations: "",
+    sort: "title", order: "asc", page: "1", selected: "",
+};
+
+const SORT_OPTIONS = [
+    { value: "title", label: "Title" },
+    { value: "date", label: "Publication date" },
+    { value: "citations", label: "Citations" },
+    { value: "journal", label: "Journal" },
+];
+
+const CITATION_OPTIONS = [1, 10, 25, 50, 100].map((n) => ({ value: String(n), label: `${n}+` }));
 
 function Papers() {
-    const [papers, setPapers] = useState([]);
-    const [researchers, setResearchers] = useState([]);
-    const [search, setSearch] = useState("");
-    const [researcher, setResearcher] = useState("");
-    const [page, setPage] = useState(1);
-    const [totalPages, setTotalPages] = useState(1);
-    const [totalCount, setTotalCount] = useState(0);
-    const [selected, setSelected] = useState(null);
-    const [loading, setLoading] = useState(true);
-    const [detailLoading, setDetailLoading] = useState(false);
-    const [error, setError] = useState("");
+    const [params, update, clear] = useListParams(DEFAULTS);
+    const options = useFilterOptions();
+    const researchers = useList("/researchers/", {}).data || [];
+
+    const { data, loading, error } = useList("/papers/", {
+        search: params.search,
+        researcher: params.researcher,
+        year_from: params.year_from,
+        year_to: params.year_to,
+        min_citations: params.min_citations,
+        sort: params.sort,
+        order: params.order,
+        page: params.page,
+    });
+    const papers = data?.results || [];
+    const detail = useDetail("/papers/", params.selected);
+
+    const select = useCallback((id) => update({ selected: id }, { keepPage: true, push: true }), [update]);
+    const deselect = useCallback(() => update({ selected: "" }, { keepPage: true }), [update]);
 
     // Click anywhere outside the cards and detail panel to clear the selection.
-    useDeselectOnOutsideClick(
-        "[data-paper-card], [data-paper-details]",
-        setSelected
-    );
+    useDeselectOnOutsideClick("[data-paper-card], [data-paper-details]", deselect);
+    useScrollToDetailsOnSmallScreens("[data-paper-details]", detail.data);
 
-    useEffect(() => {
-        fetch(`${API_BASE}/researchers/`)
-            .then((res) => {
-                if (!res.ok) throw new Error("Failed to load researchers");
-                return res.json();
-            })
-            .then(setResearchers)
-            .catch((err) => setError(err.message));
-    }, []);
-
-    useEffect(() => {
-        const controller = new AbortController();
-
-        async function loadPapers() {
-            setLoading(true);
-            setError("");
-
-            try {
-                const params = new URLSearchParams({
-                    search,
-                    researcher,
-                    page: String(page),
-                });
-
-                const response = await fetch(
-                    `${API_BASE}/papers/?${params}`,
-                    { signal: controller.signal }
-                );
-
-                if (!response.ok) {
-                    throw new Error("Failed to load papers");
-                }
-
-                const data = await response.json();
-
-                setPapers(data.results);
-                setTotalCount(data.count);
-                setTotalPages(data.total_pages);
-            } catch (err) {
-                if (err.name !== "AbortError") {
-                    setError(err.message);
-                }
-            } finally {
-                if (!controller.signal.aborted) {
-                    setLoading(false);
-                }
-            }
-        }
-
-        loadPapers();
-
-        return () => controller.abort();
-    }, [search, researcher, page]);
-
-    async function showDetails(id) {
-        setDetailLoading(true);
-        setSelected(null);
-        setError("");
-
-        try {
-            const response = await fetch(`${API_BASE}/papers/${id}/`);
-
-            if (!response.ok) {
-                throw new Error("Failed to load paper details");
-            }
-
-            const data = await response.json();
-            setSelected(data);
-        } catch (err) {
-            setError(err.message);
-        } finally {
-            setDetailLoading(false);
+    const years = [];
+    if (options?.papers.first_year && options?.papers.last_year) {
+        for (let year = options.papers.last_year; year >= options.papers.first_year; year -= 1) {
+            years.push(String(year));
         }
     }
 
+    const canClear = Boolean(params.search || params.researcher || params.year_from || params.year_to
+        || params.min_citations || params.sort !== DEFAULTS.sort || params.order !== DEFAULTS.order);
+
+    const selected = detail.data;
+
     return (
-        <div style={{ padding: "40px", maxWidth: "1400px", margin: "auto" }}>
+        <div style={pageStyle}>
             <h1>Research Papers</h1>
 
-            <div style={filterStyle}>
-                <input
-                    type="text"
-                    placeholder="Search papers by title..."
-                    value={search}
-                    onChange={(e) => {
-                        setSearch(e.target.value);
-                        setPage(1);
-                    }}
-                    style={inputStyle}
+            <ListToolbar
+                search={params.search}
+                onSearch={(search) => update({ search })}
+                placeholder="Search by title, author, journal or keyword..."
+                sortOptions={SORT_OPTIONS}
+                sort={params.sort}
+                order={params.order}
+                onSortChange={update}
+                resultText={loading && !data ? "Loading papers..." : `${data?.count ?? 0} papers found`}
+                canClear={canClear}
+                onClear={clear}
+            >
+                <FilterSelect
+                    label="Researcher"
+                    value={params.researcher}
+                    onChange={(researcher) => update({ researcher })}
+                    options={researchers.map((r) => ({ value: r.auid, label: r.name }))}
+                    allLabel="All researchers"
                 />
-
-                <select
-                    value={researcher}
-                    onChange={(e) => {
-                        setResearcher(e.target.value);
-                        setPage(1);
-                    }}
-                    style={inputStyle}
-                >
-                    <option value="">All Researchers</option>
-                    {researchers.map((r) => (
-                        <option key={r.auid} value={r.auid}>
-                            {r.name}
-                        </option>
-                    ))}
-                </select>
-            </div>
+                <FilterSelect
+                    label="Published from"
+                    value={params.year_from}
+                    onChange={(year_from) => update({ year_from })}
+                    options={years}
+                    allLabel="Any year"
+                />
+                <FilterSelect
+                    label="Published to"
+                    value={params.year_to}
+                    onChange={(year_to) => update({ year_to })}
+                    options={years}
+                    allLabel="Any year"
+                />
+                <FilterSelect
+                    label="Citations"
+                    value={params.min_citations}
+                    onChange={(min_citations) => update({ min_citations })}
+                    options={CITATION_OPTIONS}
+                    allLabel="Any"
+                />
+            </ListToolbar>
 
             {error && <p style={{ color: "red" }}>{error}</p>}
 
-            <p>{totalCount} papers found</p>
-
             <div style={layoutStyle}>
-                <div style={{ flex: 1, minWidth: "300px" }}>
-                    {loading ? (
-                        <p>Loading papers...</p>
-                    ) : (
-                        papers.map((paper) => (
-                            <div
-                                key={paper.id}
-                                data-paper-card
-                                style={cardStyle}
-                                onClick={() => showDetails(paper.id)}
-                            >
-                                <h3>{paper.title}</h3>
-
-                                <p>
-                                    <strong>Authors:</strong>{" "}
-                                    {paper.authors_display || "Not available"}
-                                </p>
-
-                                <p>
-                                    <strong>Published:</strong>{" "}
-                                    {paper.publication_date || "Not available"}
-                                </p>
-
-                                <p>
-                                    <strong>Citations:</strong>{" "}
-                                    {paper.total_citations ?? "Not available"}
-                                </p>
-                            </div>
-                        ))
+                <div style={listColumnStyle}>
+                    {!loading && papers.length === 0 && (
+                        <p style={mutedStyle}>No papers match your search.</p>
                     )}
 
-                    <div style={paginationStyle}>
-                        <button
-                            disabled={page <= 1 || loading}
-                            onClick={() => setPage(page - 1)}
+                    {papers.map((paper) => (
+                        <div
+                            key={paper.id}
+                            data-paper-card
+                            style={String(paper.id) === params.selected ? selectedCardStyle : cardStyle}
+                            onClick={() => select(String(paper.id))}
                         >
-                            Previous
-                        </button>
+                            <h3 style={{ marginTop: 0 }}>{paper.title}</h3>
+                            <p style={metaStyle}>{paper.authors_display || "Authors not available"}</p>
+                            <p style={{ ...metaStyle, ...mutedStyle }}>
+                                {formatDate(paper.publication_date)}
+                                {" · "}{paper.published_in || "Journal not available"}
+                                {" · "}{paper.total_citations ?? 0} citations
+                            </p>
+                        </div>
+                    ))}
 
-                        <span>Page {page} of {totalPages}</span>
-
-                        <button
-                            disabled={page >= totalPages || loading}
-                            onClick={() => setPage(page + 1)}
-                        >
-                            Next
-                        </button>
-                    </div>
+                    <Pagination
+                        page={data?.current_page || 1}
+                        totalPages={data?.total_pages || 1}
+                        onPageChange={(page) => update({ page })}
+                        disabled={loading}
+                    />
                 </div>
 
                 <div data-paper-details style={detailColumnStyle}>
-                    {detailLoading && <p>Loading paper details...</p>}
+                    {detail.loading && <p>Loading paper details...</p>}
+                    {detail.error && <p style={{ color: "red" }}>{detail.error}</p>}
 
                     {selected && (
                         <div style={detailCardStyle}>
-                            <h2>{selected.title}</h2>
+                            <h2 style={{ marginTop: 0 }}>{selected.title}</h2>
 
-                            <p>
-                                <strong>Authors:</strong>{" "}
-                                {selected.authors_display || "Not available"}
-                            </p>
+                            <p style={metaStyle}><strong>Authors:</strong> {selected.authors_display || NOT_AVAILABLE}</p>
+                            <p style={metaStyle}><strong>Publication Date:</strong> {formatDate(selected.publication_date)}</p>
+                            <p style={metaStyle}><strong>Published In:</strong> {selected.published_in || NOT_AVAILABLE}</p>
+                            <p style={metaStyle}><strong>Citations:</strong> {selected.total_citations ?? NOT_AVAILABLE}</p>
 
-                            <p>
-                                <strong>Publication Date:</strong>{" "}
-                                {selected.publication_date || "Not available"}
-                            </p>
-
-                            <p>
-                                <strong>Published In:</strong>{" "}
-                                {selected.published_in || "Not available"}
-                            </p>
-
-                            <p>
-                                <strong>Citations:</strong>{" "}
-                                {selected.total_citations ?? "Not available"}
-                            </p>
-
-                            <CollapsibleText
+                            <ExpandableText
+                                key={selected.abstract}
                                 title="Abstract / Research Description"
                                 text={selected.abstract}
-                                showLabel="Click to show abstract"
-                                hideLabel="Hide abstract"
+                                previewWords={80}
                             />
 
-                            <h3>Associated Researchers</h3>
-
+                            <h3 style={sectionTitleStyle}>Researchers</h3>
                             {selected.researchers?.length > 0 ? (
-                                <ul>
+                                <ul style={{ paddingLeft: "20px" }}>
                                     {selected.researchers.map((r) => (
-                                        <li key={r.auid}>{r.name}</li>
-                                    ))}
-                                </ul>
-                            ) : (
-                                <p>Not available</p>
-                            )}
-
-                            <h3>Keywords and Scores</h3>
-
-                            {selected.keywords?.length > 0 ? (
-                                <ul>
-                                    {selected.keywords.map((keyword, index) => (
-                                        <li key={index}>
-                                            {keyword.keyword} — Score:{" "}
-                                            {Number(keyword.score).toFixed(3)}
+                                        <li key={r.auid} style={{ marginBottom: "4px" }}>
+                                            <Link to={`/researchers?selected=${encodeURIComponent(r.auid)}`} style={linkStyle}>
+                                                {r.name}
+                                            </Link>
                                         </li>
                                     ))}
                                 </ul>
                             ) : (
-                                <p>Not available</p>
+                                <p>{NOT_AVAILABLE}</p>
                             )}
+
+                            <h3 style={sectionTitleStyle}>Keywords</h3>
+                            <KeywordChips
+                                items={(selected.keywords || []).map((k) => ({ label: k.keyword, score: k.score }))}
+                            />
                         </div>
                     )}
 
-                    {!selected && !detailLoading && (
-                        <p>Select a paper to view its details.</p>
+                    {!params.selected && (
+                        <p style={mutedStyle}>Select a paper to view its details.</p>
                     )}
                 </div>
             </div>
@@ -260,60 +199,5 @@ function Papers() {
     );
 }
 
-const filterStyle = {
-    display: "flex",
-    gap: "15px",
-    flexWrap: "wrap",
-    marginBottom: "20px"
-};
-
-const inputStyle = {
-    padding: "12px",
-    border: "1px solid #ccc",
-    borderRadius: "8px",
-    flex: 1,
-    minWidth: "250px"
-};
-
-const layoutStyle = {
-    display: "flex",
-    gap: "25px",
-    flexWrap: "wrap"
-};
-
-const cardStyle = {
-    padding: "20px",
-    marginBottom: "15px",
-    backgroundColor: "white",
-    border: "1px solid #ddd",
-    borderRadius: "10px",
-    cursor: "pointer",
-    overflowWrap: "anywhere"
-};
-
-const detailColumnStyle = {
-    flex: 1,
-    minWidth: "320px",
-    alignSelf: "flex-start",
-    position: "sticky",
-    top: "20px",
-    maxHeight: "calc(100vh - 40px)",
-    overflowY: "auto",
-    paddingRight: "4px"
-};
-
-const detailCardStyle = {
-    ...cardStyle,
-    cursor: "default",
-    marginBottom: 0
-};
-
-const paginationStyle = {
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: "20px",
-    padding: "20px"
-};
 
 export default Papers;

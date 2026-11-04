@@ -9,12 +9,14 @@ from researchdata.views import (
     paper_detail,
     opportunity_list,
     opportunity_detail,
+    filter_options,
 )
 
 urlpatterns = [
     path('admin/', admin.site.urls),
 
     path('api/dashboard/', dashboard_stats, name='dashboard-stats'),
+    path('api/filters/', filter_options, name='filter-options'),
 
     path('api/researchers/', researcher_list, name='researcher-list'),
     path('api/researchers/<str:auid>/', researcher_detail, name='researcher-detail'),

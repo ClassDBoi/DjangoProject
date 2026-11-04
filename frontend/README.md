@@ -1,16 +1,47 @@
-# React + Vite
+# AUSME frontend
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+React 19 + Vite. Pages talk to the Django REST API described in `../docs/API.md`.
 
-Currently, two official plugins are available:
+## Commands
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+```powershell
+npm ci          # install exact dependency versions from package-lock.json
+npm run dev     # development server on http://localhost:5173 (proxies /api to Django)
+npm run lint    # ESLint
+npm run build   # production build into dist/
+```
 
-## React Compiler
+`VITE_API_BASE` in `frontend/.env` can point at another API server. When it is not
+set, requests go to `/api` and the dev server proxies them to `http://127.0.0.1:8000`
+(see `vite.config.js`).
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+## Structure
 
-## Expanding the ESLint configuration
+| Path | Purpose |
+|---|---|
+| `src/App.jsx` | Routes: `/dashboard`, `/researchers`, `/papers`, `/opportunities` |
+| `src/components/dashboard/` | The four pages and the navigation bar |
+| `src/components/common/` | Shared pieces: list toolbar (search, filters, sort), pagination, "Read more" text, college badge, deadline badge, keyword chips, shared styles |
+| `src/hooks/` | Data loading (`useList`, `useDetail`, `useFilterOptions`), URL state (`useListParams`) and small UI helpers |
+| `src/lib/` | API client (`api.js`) and display formatting (`format.js`) |
+| `src/config/collegeImages.js` | Maps college names to images in `public/colleges/` |
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+## How the list pages work
+
+- **State lives in the URL.** Search text, filters, sort, page and the selected item
+  are query parameters (for example `/papers?search=diabetes&sort=citations&order=desc`).
+  Refreshing, the back button and shared links keep them. Each page lists its
+  parameters and defaults in a `DEFAULTS` object at the top.
+- **Searching and sorting happen in the API**, not in the browser, so they keep
+  working as the dataset grows.
+- **Cross-links:** a paper's researchers link to `/researchers?selected=<AUID>`, and a
+  researcher's papers link to `/papers?selected=<id>`.
+- **Detail panels** stay beside the list while it scrolls, below the sticky navigation
+  bar (`--nav-height` in `src/index.css`). On narrow screens the panel sits below the
+  list and the page scrolls to it when an item is selected.
+
+## Adding college images
+
+Put the image files in `public/colleges/`, then map each college name (exactly as in
+the database) to its file in `src/config/collegeImages.js`. Colleges without an
+image show their initials.
