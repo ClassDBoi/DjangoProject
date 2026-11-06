@@ -1,182 +1,210 @@
-import React, { useEffect, useState } from "react";
+import React, { useCallback } from "react";
+import { Link } from "react-router-dom";
 
-import CollapsibleText from "./CollapsibleText";
+import CollegeBadge from "../common/CollegeBadge";
+import ExpandableText from "../common/ExpandableText";
+import KeywordChips from "../common/KeywordChips";
+import MatchList from "../common/MatchList";
+import ListToolbar, { FilterSelect } from "../common/ListToolbar";
+import {
+    cardStyle, detailCardStyle, detailColumnStyle, layoutStyle, linkStyle, listColumnStyle,
+    metaStyle, mutedStyle, pageStyle, sectionTitleStyle, selectedCardStyle,
+} from "../common/styles";
 import useDeselectOnOutsideClick from "./useDeselectOnOutsideClick";
+import useDetail from "../../hooks/useDetail";
+import useFilterOptions from "../../hooks/useFilterOptions";
+import useList from "../../hooks/useList";
+import useListParams from "../../hooks/useListParams";
+import useScrollToDetailsOnSmallScreens from "../../hooks/useScrollToDetailsOnSmallScreens";
+import { NOT_AVAILABLE, formatDate } from "../../lib/format";
 
-// Falls back to the Vite dev-server proxy (/api) when VITE_API_BASE is not set.
-const API_BASE = (import.meta.env.VITE_API_BASE || "/api").replace(/\/+$/, "");
+// Papers shown in the researcher panel; the rest are one click away on the Papers page.
+const PAPERS_SHOWN = 3;
+
+// Every URL parameter this page uses, with its default.
+const DEFAULTS = { search: "", college: "", department: "", sort: "name", order: "asc", selected: "" };
+
+const SORT_OPTIONS = [
+    { value: "name", label: "Name" },
+    { value: "department", label: "Department" },
+    { value: "college", label: "College" },
+    { value: "auid", label: "AUID" },
+    { value: "papers", label: "Number of papers" },
+];
 
 function Researchers() {
-    const [researchers, setResearchers] = useState([]);
-    const [search, setSearch] = useState("");
-    const [selected, setSelected] = useState(null);
-    const [loading, setLoading] = useState(true);
-    const [detailLoading, setDetailLoading] = useState(false);
-    const [error, setError] = useState("");
+    const [params, update, clear] = useListParams(DEFAULTS);
+    const options = useFilterOptions();
+
+    const { data, loading, error } = useList("/researchers/", {
+        search: params.search,
+        college: params.college,
+        department: params.department,
+        sort: params.sort,
+        order: params.order,
+    });
+    const researchers = data || [];
+    const detail = useDetail("/researchers/", params.selected);
+    const matches = useDetail("/researchers/", params.selected, "matches/");
+
+    const select = useCallback((auid) => update({ selected: auid }, { keepPage: true, push: true }), [update]);
+    const deselect = useCallback(() => update({ selected: "" }, { keepPage: true }), [update]);
 
     // Click anywhere outside the cards and detail panel to clear the selection.
-    useDeselectOnOutsideClick(
-        "[data-researcher-card], [data-researcher-details]",
-        setSelected
+    useDeselectOnOutsideClick("[data-researcher-card], [data-researcher-details]", deselect);
+    useScrollToDetailsOnSmallScreens("[data-researcher-details]", detail.data);
+
+    // Departments of the chosen college only.
+    const departments = (options?.researchers.departments || [])
+        .filter((item) => !params.college || item.college === params.college)
+        .map((item) => item.department);
+
+    const canClear = Boolean(params.search || params.college || params.department
+        || params.sort !== DEFAULTS.sort || params.order !== DEFAULTS.order);
+
+    const selected = detail.data;
+    // Most recent first.
+    const papers = [...(selected?.papers || [])].sort(
+        (a, b) => String(b.publication_date || "").localeCompare(String(a.publication_date || ""))
     );
-
-    useEffect(() => {
-        const controller = new AbortController();
-
-        async function loadResearchers() {
-            setLoading(true);
-            setError("");
-
-            try {
-                const response = await fetch(
-                    `${API_BASE}/researchers/?search=${encodeURIComponent(search)}`,
-                    { signal: controller.signal }
-                );
-
-                if (!response.ok) {
-                    throw new Error("Failed to load researchers");
-                }
-
-                const data = await response.json();
-                setResearchers(data);
-            } catch (err) {
-                if (err.name !== "AbortError") {
-                    setError(err.message);
-                }
-            } finally {
-                if (!controller.signal.aborted) {
-                    setLoading(false);
-                }
-            }
-        }
-
-        loadResearchers();
-
-        return () => controller.abort();
-    }, [search]);
-
-    async function showDetails(auid) {
-        setDetailLoading(true);
-        setSelected(null);
-        setError("");
-
-        try {
-            const response = await fetch(
-                `${API_BASE}/researchers/${encodeURIComponent(auid)}/`
-            );
-
-            if (!response.ok) {
-                throw new Error("Failed to load researcher details");
-            }
-
-            const data = await response.json();
-            setSelected(data);
-        } catch (err) {
-            setError(err.message);
-        } finally {
-            setDetailLoading(false);
-        }
-    }
+    const allPapersLink = selected
+        ? `/papers?researcher=${encodeURIComponent(selected.auid)}&sort=date&order=desc`
+        : "";
 
     return (
-        <div style={{ padding: "40px", maxWidth: "1200px", margin: "auto" }}>
+        <div style={pageStyle}>
             <h1>Researchers</h1>
 
-            <input
-                type="text"
-                placeholder="Search researchers by name..."
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                style={inputStyle}
-            />
+            <ListToolbar
+                search={params.search}
+                onSearch={(search) => update({ search })}
+                placeholder="Search by name, AUID, department or college..."
+                sortOptions={SORT_OPTIONS}
+                sort={params.sort}
+                order={params.order}
+                onSortChange={update}
+                resultText={loading ? "Loading researchers..." : `${researchers.length} researchers found`}
+                canClear={canClear}
+                onClear={clear}
+            >
+                <FilterSelect
+                    label="College"
+                    value={params.college}
+                    onChange={(college) => update({ college, department: "" })}
+                    options={options?.researchers.colleges || []}
+                    allLabel="All colleges"
+                />
+                <FilterSelect
+                    label="Department"
+                    value={params.department}
+                    onChange={(department) => update({ department })}
+                    options={departments}
+                    allLabel="All departments"
+                />
+            </ListToolbar>
 
             {error && <p style={{ color: "red" }}>{error}</p>}
 
-            {loading ? (
-                <p>Loading researchers...</p>
-            ) : (
-                <p>{researchers.length} researchers found</p>
-            )}
-
             <div style={layoutStyle}>
-                <div style={{ flex: 1, minWidth: "280px" }}>
+                <div style={listColumnStyle}>
+                    {!loading && researchers.length === 0 && (
+                        <p style={mutedStyle}>No researchers match your search.</p>
+                    )}
+
                     {researchers.map((researcher) => (
                         <div
                             key={researcher.auid}
                             data-researcher-card
-                            style={cardStyle}
-                            onClick={() => showDetails(researcher.auid)}
+                            style={researcher.auid === params.selected ? selectedCardStyle : cardStyle}
+                            onClick={() => select(researcher.auid)}
                         >
-                            <h3>{researcher.name}</h3>
-                            <p>{researcher.title || "Not available"}</p>
-                            <p>{researcher.department || "Not available"}</p>
+                            <div style={cardHeaderStyle}>
+                                <CollegeBadge college={researcher.college} />
+                                <div>
+                                    <h3 style={{ margin: "0 0 4px" }}>{researcher.name}</h3>
+                                    <p style={metaStyle}>{researcher.title || NOT_AVAILABLE}</p>
+                                </div>
+                            </div>
+                            <p style={metaStyle}>{researcher.department || NOT_AVAILABLE}</p>
+                            <p style={{ ...metaStyle, ...mutedStyle }}>
+                                {researcher.college || "College not available"}
+                                {" · "}{researcher.paper_count} paper{researcher.paper_count === 1 ? "" : "s"}
+                                {" · "}AUID {researcher.auid}
+                            </p>
                         </div>
                     ))}
                 </div>
 
-                <div data-researcher-details style={detailColumnStyle}>
-                    {detailLoading && <p>Loading details...</p>}
+                <div data-researcher-details style={{ ...detailColumnStyle, flex: 2 }}>
+                    {detail.loading && <p>Loading details...</p>}
+                    {detail.error && <p style={{ color: "red" }}>{detail.error}</p>}
 
                     {selected && (
                         <div style={detailCardStyle}>
-                            <h2>{selected.name}</h2>
+                            <div style={cardHeaderStyle}>
+                                <CollegeBadge college={selected.college} size={56} />
+                                <div>
+                                    <h2 style={{ margin: "0 0 4px" }}>{selected.name}</h2>
+                                    <p style={metaStyle}>{selected.title || NOT_AVAILABLE}</p>
+                                </div>
+                            </div>
 
-                            <p><strong>Title:</strong> {selected.title || "Not available"}</p>
-                            <p><strong>Department:</strong> {selected.department || "Not available"}</p>
-                            <p><strong>College:</strong> {selected.college || "Not available"}</p>
+                            <p style={metaStyle}><strong>Department:</strong> {selected.department || NOT_AVAILABLE}</p>
+                            <p style={metaStyle}><strong>College:</strong> {selected.college || NOT_AVAILABLE}</p>
+                            <p style={metaStyle}><strong>AUID:</strong> {selected.auid}</p>
 
-                            <h3>Associated Research Papers</h3>
+                            <MatchList kind="researcher" data={matches.data} loading={matches.loading} />
 
-                            {selected.papers?.length > 0 ? (
-                                selected.papers.map((paper) => (
+                            <h3 style={sectionTitleStyle}>
+                                Research Papers ({papers.length})
+                                {papers.length > PAPERS_SHOWN && (
+                                    <span style={{ ...mutedStyle, fontWeight: 400, fontSize: "14px" }}>
+                                        {" "}· showing the {PAPERS_SHOWN} most recent
+                                    </span>
+                                )}
+                            </h3>
+
+                            {papers.length > 0 ? (
+                                papers.slice(0, PAPERS_SHOWN).map((paper) => (
                                     <div key={paper.id} style={paperStyle}>
-                                        <h4>{paper.title}</h4>
+                                        <Link to={`/papers?selected=${paper.id}`} style={{ ...linkStyle, fontSize: "16px" }}>
+                                            {paper.title}
+                                        </Link>
 
-                                        <p>
-                                            <strong>Publication Date:</strong>{" "}
-                                            {paper.publication_date || "Not available"}
+                                        <p style={{ ...metaStyle, ...mutedStyle, marginTop: "6px" }}>
+                                            {formatDate(paper.publication_date)}
+                                            {" · "}{paper.published_in || "Journal not available"}
+                                            {" · "}{paper.total_citations ?? 0} citations
                                         </p>
 
-                                        <p>
-                                            <strong>Published In:</strong>{" "}
-                                            {paper.published_in || "Not available"}
-                                        </p>
-
-                                        <p>
-                                            <strong>Citations:</strong>{" "}
-                                            {paper.total_citations ?? "Not available"}
-                                        </p>
-
-                                        <CollapsibleText
-                                            title="Abstract / Research Description"
+                                        <ExpandableText
+                                            key={paper.abstract}
+                                            title="Abstract"
                                             text={paper.abstract}
-                                            showLabel="Click to show abstract"
-                                            hideLabel="Hide abstract"
+                                            previewWords={40}
+                                            noun="abstract"
                                         />
 
-                                        <strong>Keywords:</strong>
-
-                                        {paper.keywords?.length > 0 ? (
-                                            <ul>
-                                                {paper.keywords.map((keyword, index) => (
-                                                    <li key={index}>
-                                                        {keyword.keyword} — Score: {keyword.score}
-                                                    </li>
-                                                ))}
-                                            </ul>
-                                        ) : (
-                                            <p>Not available</p>
-                                        )}
+                                        <KeywordChips
+                                            items={(paper.keywords || []).map((k) => ({ label: k.keyword, score: k.score }))}
+                                        />
                                     </div>
                                 ))
                             ) : (
                                 <p>No associated papers found.</p>
                             )}
+
+                            {papers.length > PAPERS_SHOWN && (
+                                <Link to={allPapersLink} style={allPapersButtonStyle}>
+                                    View all {papers.length} papers by {selected.name}
+                                    {" "}<i className="fa-solid fa-arrow-right" />
+                                </Link>
+                            )}
                         </div>
                     )}
 
-                    {!selected && !detailLoading && (
-                        <p>Select a researcher to view details.</p>
+                    {!params.selected && (
+                        <p style={mutedStyle}>Select a researcher to view details.</p>
                     )}
                 </div>
             </div>
@@ -184,52 +212,29 @@ function Researchers() {
     );
 }
 
-const inputStyle = {
-    width: "100%",
-    padding: "14px",
-    marginBottom: "20px",
-    border: "1px solid #ccc",
-    borderRadius: "8px",
-    boxSizing: "border-box"
-};
-
-const layoutStyle = {
+const cardHeaderStyle = {
     display: "flex",
-    gap: "25px",
-    flexWrap: "wrap"
+    alignItems: "center",
+    gap: "14px",
+    marginBottom: "8px",
 };
 
-const cardStyle = {
-    padding: "20px",
-    marginBottom: "15px",
-    backgroundColor: "white",
-    border: "1px solid #ddd",
-    borderRadius: "10px",
-    cursor: "pointer"
-};
-
-const detailColumnStyle = {
-    flex: 2,
-    minWidth: "320px",
-    alignSelf: "flex-start",
-    position: "sticky",
-    top: "20px",
-    maxHeight: "calc(100vh - 40px)",
-    overflowY: "auto",
-    paddingRight: "4px"
-};
-
-const detailCardStyle = {
-    ...cardStyle,
-    cursor: "default",
-    marginBottom: 0
+const allPapersButtonStyle = {
+    display: "inline-block",
+    marginTop: "18px",
+    padding: "10px 16px",
+    borderRadius: "8px",
+    backgroundColor: "var(--auburn-navy)",
+    color: "white",
+    textDecoration: "none",
+    fontWeight: 600,
 };
 
 const paperStyle = {
     padding: "15px",
     marginTop: "15px",
     border: "1px solid #eee",
-    borderRadius: "8px"
+    borderRadius: "8px",
 };
 
 export default Researchers;

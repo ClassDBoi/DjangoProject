@@ -1,4 +1,6 @@
 :root {
+    /* Height of the sticky top navigation bar (Navigation.jsx). */
+    --nav-height: 70px;
     --auburn_blue: #0C2340;
     --auburn_orange: #cc4e0b;
     --auburn_second_blue: #006c9a;
@@ -59,3 +61,35 @@ body {
     background-color: var(--accent-orange);
 }
 
+
+/* Keyboard focus is clearly visible on links, buttons and form controls. */
+a:focus-visible,
+button:focus-visible,
+input:focus-visible,
+select:focus-visible {
+    outline: 2px solid var(--auburn_second_orange);
+    outline-offset: 2px;
+}
+
+/* Small screens: the navigation links scroll sideways in one row,
+   so the sticky bar stays short. */
+@media (max-width: 700px) {
+    :root {
+        --nav-height: 104px;
+    }
+
+    .app-nav {
+        padding: 12px 16px !important;
+        gap: 8px !important;
+    }
+
+    .app-nav-links {
+        flex-wrap: nowrap !important;
+        overflow-x: auto;
+        width: 100%;
+    }
+
+    .app-nav-links a {
+        white-space: nowrap;
+    }
+}

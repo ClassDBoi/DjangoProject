@@ -20,7 +20,7 @@ export default function useDeselectOnOutsideClick(protectedSelector, setSelected
             if (!(event.target instanceof Element)) return;
 
             const insideProtectedArea = event.target.closest(
-                `${protectedSelector}, input, select, textarea, button, a, label`
+                `${protectedSelector}, input, select, textarea, button, a, label, [role="button"]`
             );
 
             if (!insideProtectedArea) {

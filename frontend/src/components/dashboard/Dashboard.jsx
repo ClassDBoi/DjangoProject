@@ -98,9 +98,6 @@ function Dashboard() {
         return <p role="alert" style={{ color: "red" }}>Error: {error}</p>;
     }
 
-    const chunkWords = stats.rag_chunk_assumptions?.chunk_words ?? 500;
-    const overlapWords = stats.rag_chunk_assumptions?.overlap_words ?? 75;
-
     return (
         <div style={{ padding: "40px" }}>
             <h1>Research Dashboard</h1>
@@ -119,18 +116,6 @@ function Dashboard() {
                 <div style={cardStyle}>
                     <h2>Funding Opportunities</h2>
                     <h1>{stats.opportunities}</h1>
-                </div>
-
-                <div style={cardStyle}>
-                    <h2>Papers with Abstracts</h2>
-                    <h1>{stats.papers_with_abstracts}</h1>
-                    <p style={cardSubtextStyle}>of {stats.papers}</p>
-                </div>
-
-                <div style={cardStyle}>
-                    <h2>Full Announcements</h2>
-                    <h1>{stats.opportunities_with_full_announcements}</h1>
-                    <p style={cardSubtextStyle}>of {stats.opportunities}</p>
                 </div>
             </div>
 
@@ -158,14 +143,6 @@ function Dashboard() {
                     title="Full Funding Announcement Lengths"
                     data={stats.funding_full_announcement_lengths}
                 />
-
-                <HistogramCard
-                    title="Estimated RAG Chunks per Full Announcement"
-                    data={stats.funding_rag_chunk_estimates}
-                    xLabel="Estimated chunk-count range"
-                    unit="chunks"
-                    note={`Planning estimate only: ${chunkWords} words per chunk with ${overlapWords} words of overlap. Final retrieval should use meaningful document sections where possible.`}
-                />
             </div>
         </div>
     );
@@ -184,11 +161,6 @@ const cardStyle = {
     minWidth: "220px",
     backgroundColor: "white",
     boxShadow: "0 2px 6px rgba(0,0,0,0.08)"
-};
-
-const cardSubtextStyle = {
-    margin: 0,
-    color: "#666"
 };
 
 const chartsContainer = {
