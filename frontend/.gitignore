@@ -26,8 +26,9 @@ dist-ssr
 # Dependencies
 node_modules/
 
-# Build output
+# Build output and Vite cache
 dist/
+.vite/
 
 # Local environment configuration
 .env
