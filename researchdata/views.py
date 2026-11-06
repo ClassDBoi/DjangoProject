@@ -69,8 +69,7 @@ def _clean_text(value):
 
     text = str(value)
 
-    # Match the intent of Scripts/analyze_dataset.py without adding a runtime
-    # BeautifulSoup dependency to the Django API.
+    # Strip HTML tags and entities without adding a BeautifulSoup dependency.
     text = re.sub(
         r"<(script|style)\b[^>]*>.*?</\1>",
         " ",
@@ -145,7 +144,7 @@ def dashboard_stats(request):
         "papers": len(papers),
         "opportunities": len(opportunities),
 
-        # These bins mirror the current Scripts/analyze_dataset.py output.
+        # Word-count distributions for the dashboard charts.
         "paper_title_lengths": _bin_counts(
             paper_title_words,
             [0, 5, 10, 15, 20, 30],

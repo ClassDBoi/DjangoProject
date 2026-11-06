@@ -1,0 +1,10 @@
+Document type: $doc_kind
+$context_note
+Title: $title
+
+Text:
+"""
+$text
+"""
+
+Extract the topics and keywords for this document. Return only the JSON object.
