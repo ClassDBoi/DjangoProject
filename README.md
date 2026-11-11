@@ -19,6 +19,7 @@ opportunities fit each researcher's work, with the evidence for every match.
 | `matching_pipeline/` | Offline pipeline that generates topics and matches (see `matching_pipeline/README.md`) |
 | `docs/API.md` | REST API reference |
 | `docs/DECISIONS.md` | How the models, filters, scoring and cutoffs were chosen, with the evidence |
+| `docs/DATA.md` | Structure of the client data files, for adding or updating data |
 | `start-dev.ps1` | Starts Django and Vite together on Windows |
 | `data/` | Client data files. **Gitignored: never commit them.** Obtain them from the client. |
 
