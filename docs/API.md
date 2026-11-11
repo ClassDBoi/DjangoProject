@@ -72,7 +72,7 @@ or likelihood of funding; eligibility and deadlines are not part of it.
 | Field | Meaning |
 |---|---|
 | `run` | `{name, semantic_model, similarity_cutoff, imported_at}`, or `null` if no run has been imported |
-| `matches` | best matches first: the opportunity (or researcher), `semantic_similarity`, and `evidence`: a list of `{opportunity_topic, researcher_term, paper_id, paper_title, other_paper_count, semantic_similarity}` |
+| `matches` | best matches first: the opportunity (`opp_id`, `title`, `agency`, `estimated_funding`, `due_date`) or researcher (`auid`, `name`, `title`, `department`, `college`), `rank`, `semantic_similarity`, and `evidence`: a list of `{opportunity_topic, researcher_term, paper_id, paper_title, other_paper_count, semantic_similarity}` |
 | `no_close_match` | `true` when there are matches but none reach the cutoff |
 | `unmatched_reason` | opportunities only: why an opportunity could not be matched (no research topics, or not enough text) |
 

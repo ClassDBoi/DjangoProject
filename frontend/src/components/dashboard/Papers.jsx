@@ -2,19 +2,22 @@ import React, { useCallback } from "react";
 import { Link } from "react-router-dom";
 
 import ExpandableText from "../common/ExpandableText";
+import FieldGrid from "../common/FieldGrid";
 import KeywordChips from "../common/KeywordChips";
 import ListToolbar, { FilterSelect } from "../common/ListToolbar";
 import Pagination from "../common/Pagination";
+import ResearcherPhoto from "../common/ResearcherPhoto";
 import {
     cardStyle, detailCardStyle, detailColumnStyle, layoutStyle, linkStyle, listColumnStyle,
     metaStyle, mutedStyle, pageStyle, sectionTitleStyle, selectedCardStyle,
 } from "../common/styles";
-import useDeselectOnOutsideClick from "./useDeselectOnOutsideClick";
+import useAutoSelectFirst from "../../hooks/useAutoSelectFirst";
 import useDetail from "../../hooks/useDetail";
 import useFilterOptions from "../../hooks/useFilterOptions";
 import useList from "../../hooks/useList";
 import useListParams from "../../hooks/useListParams";
 import useScrollToDetailsOnSmallScreens from "../../hooks/useScrollToDetailsOnSmallScreens";
+import { activeFilterChips } from "../../lib/filters";
 import { NOT_AVAILABLE, formatDate } from "../../lib/format";
 
 // Every URL parameter this page uses, with its default.
@@ -31,6 +34,8 @@ const SORT_OPTIONS = [
 ];
 
 const CITATION_OPTIONS = [1, 10, 25, 50, 100].map((n) => ({ value: String(n), label: `${n}+` }));
+
+const idOf = (paper) => String(paper.id);
 
 function Papers() {
     const [params, update, clear] = useListParams(DEFAULTS);
@@ -50,12 +55,32 @@ function Papers() {
     const papers = data?.results || [];
     const detail = useDetail("/papers/", params.selected);
 
-    const select = useCallback((id) => update({ selected: id }, { keepPage: true, push: true }), [update]);
-    const deselect = useCallback(() => update({ selected: "" }, { keepPage: true }), [update]);
+    const scrollToDetails = useScrollToDetailsOnSmallScreens("[data-paper-details]", detail.data);
+    // Clicking the item already shown only scrolls to it (on phones).
+    const select = useCallback((id) => {
+        if (id === params.selected) {
+            scrollToDetails(true);
+            return;
+        }
+        scrollToDetails();
+        update({ selected: id }, { keepPage: true, push: true });
+    }, [update, scrollToDetails, params.selected]);
+    const selectFirst = useCallback((id) => update({ selected: id }, { keepPage: true }), [update]);
+    useAutoSelectFirst(papers, idOf, params.selected, loading, selectFirst);
 
-    // Click anywhere outside the cards and detail panel to clear the selection.
-    useDeselectOnOutsideClick("[data-paper-card], [data-paper-details]", deselect);
-    useScrollToDetailsOnSmallScreens("[data-paper-details]", detail.data);
+    const changePage = (page) => {
+        update({ page });
+        window.scrollTo({ top: 0 });
+    };
+
+    const researcherName = (auid) => researchers.find((r) => r.auid === auid)?.name || auid;
+    const filters = [
+        { key: "search", label: "Search", format: (value) => `"${value}"` },
+        { key: "researcher", label: "Researcher", format: researcherName },
+        { key: "year_from", label: "Published from" },
+        { key: "year_to", label: "Published to" },
+        { key: "min_citations", label: "Citations", format: (value) => `${value}+` },
+    ];
 
     const years = [];
     if (options?.papers.first_year && options?.papers.last_year) {
@@ -70,7 +95,7 @@ function Papers() {
     const selected = detail.data;
 
     return (
-        <div style={pageStyle}>
+        <div className="page" style={pageStyle}>
             <h1>Research Papers</h1>
 
             <ListToolbar
@@ -82,6 +107,7 @@ function Papers() {
                 order={params.order}
                 onSortChange={update}
                 resultText={loading && !data ? "Loading papers..." : `${data?.count ?? 0} papers found`}
+                activeFilters={activeFilterChips(filters, params, update)}
                 canClear={canClear}
                 onClear={clear}
             >
@@ -130,7 +156,7 @@ function Papers() {
                             style={String(paper.id) === params.selected ? selectedCardStyle : cardStyle}
                             onClick={() => select(String(paper.id))}
                         >
-                            <h3 style={{ marginTop: 0 }}>{paper.title}</h3>
+                            <h3 style={{ margin: "0 0 8px", fontSize: "17px" }}>{paper.title}</h3>
                             <p style={metaStyle}>{paper.authors_display || "Authors not available"}</p>
                             <p style={{ ...metaStyle, ...mutedStyle }}>
                                 {formatDate(paper.publication_date)}
@@ -143,7 +169,7 @@ function Papers() {
                     <Pagination
                         page={data?.current_page || 1}
                         totalPages={data?.total_pages || 1}
-                        onPageChange={(page) => update({ page })}
+                        onPageChange={changePage}
                         disabled={loading}
                     />
                 </div>
@@ -154,12 +180,16 @@ function Papers() {
 
                     {selected && (
                         <div style={detailCardStyle}>
-                            <h2 style={{ marginTop: 0 }}>{selected.title}</h2>
+                            <h2 style={{ margin: 0 }}>{selected.title}</h2>
 
-                            <p style={metaStyle}><strong>Authors:</strong> {selected.authors_display || NOT_AVAILABLE}</p>
-                            <p style={metaStyle}><strong>Publication Date:</strong> {formatDate(selected.publication_date)}</p>
-                            <p style={metaStyle}><strong>Published In:</strong> {selected.published_in || NOT_AVAILABLE}</p>
-                            <p style={metaStyle}><strong>Citations:</strong> {selected.total_citations ?? NOT_AVAILABLE}</p>
+                            <FieldGrid
+                                fields={[
+                                    { label: "Authors", value: selected.authors_display || NOT_AVAILABLE, wide: true },
+                                    { label: "Published", value: formatDate(selected.publication_date) },
+                                    { label: "Journal", value: selected.published_in || NOT_AVAILABLE },
+                                    { label: "Citations", value: selected.total_citations ?? NOT_AVAILABLE },
+                                ]}
+                            />
 
                             <ExpandableText
                                 key={selected.abstract}
@@ -171,15 +201,18 @@ function Papers() {
 
                             <h3 style={sectionTitleStyle}>Researchers</h3>
                             {selected.researchers?.length > 0 ? (
-                                <ul style={{ paddingLeft: "20px" }}>
+                                <div style={researcherListStyle}>
                                     {selected.researchers.map((r) => (
-                                        <li key={r.auid} style={{ marginBottom: "4px" }}>
-                                            <Link to={`/researchers?selected=${encodeURIComponent(r.auid)}`} style={linkStyle}>
-                                                {r.name}
-                                            </Link>
-                                        </li>
+                                        <Link
+                                            key={r.auid}
+                                            to={`/researchers?selected=${encodeURIComponent(r.auid)}`}
+                                            style={researcherLinkStyle}
+                                        >
+                                            <ResearcherPhoto auid={r.auid} name={r.name} size={32} />
+                                            {r.name}
+                                        </Link>
                                     ))}
-                                </ul>
+                                </div>
                             ) : (
                                 <p>{NOT_AVAILABLE}</p>
                             )}
@@ -191,8 +224,8 @@ function Papers() {
                         </div>
                     )}
 
-                    {!params.selected && (
-                        <p style={mutedStyle}>Select a paper to view its details.</p>
+                    {!loading && papers.length === 0 && !params.selected && (
+                        <p style={mutedStyle}>No paper to show.</p>
                     )}
                 </div>
             </div>
@@ -200,5 +233,17 @@ function Papers() {
     );
 }
 
+const researcherListStyle = {
+    display: "flex",
+    flexWrap: "wrap",
+    gap: "10px 18px",
+};
+
+const researcherLinkStyle = {
+    ...linkStyle,
+    display: "inline-flex",
+    alignItems: "center",
+    gap: "8px",
+};
 
 export default Papers;

@@ -99,7 +99,7 @@ function Dashboard() {
     }
 
     return (
-        <div style={{ padding: "40px" }}>
+        <div className="page" style={{ padding: "24px 40px 16px" }}>
             <h1>Research Dashboard</h1>
 
             <div style={statsContainer}>

@@ -71,11 +71,42 @@ select:focus-visible {
     outline-offset: 2px;
 }
 
+/* Researcher detail header: photo on the left, spanning the name and the
+   descriptors (department, college, AUID) so they fill the space beside it. */
+.detail-header {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    column-gap: 18px;
+    align-items: start;
+}
+
+.detail-header-photo {
+    grid-row: span 2;
+}
+
 /* Small screens: the navigation links scroll sideways in one row,
    so the sticky bar stays short. */
 @media (max-width: 700px) {
     :root {
         --nav-height: 104px;
+    }
+
+    .page {
+        padding: 16px 16px 12px !important;
+    }
+
+    /* Descriptors move below the photo and name, using the full width. */
+    .detail-header-photo {
+        grid-row: auto;
+    }
+
+    .detail-header-fields {
+        grid-column: 1 / -1;
+    }
+
+    /* The opportunity icon in match cards gives its space to the title. */
+    .match-icon {
+        display: none !important;
     }
 
     .app-nav {

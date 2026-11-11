@@ -626,6 +626,7 @@ def researcher_matches(request, auid):
             "opp_id": match.opportunity.opp_id,
             "title": match.opportunity.title,
             "agency": match.opportunity.agency,
+            "estimated_funding": match.opportunity.estimated_funding,
             "due_date": match.opportunity.due_date,
             "rank": match.rank_for_researcher,
             "semantic_similarity": round(match.semantic_similarity, 4),
@@ -666,6 +667,7 @@ def opportunity_matches(request, opp_id):
         {
             "auid": match.researcher.auid,
             "name": match.researcher.name,
+            "title": match.researcher.title,
             "department": match.researcher.department,
             "college": match.researcher.college,
             "rank": match.rank_for_opportunity,
