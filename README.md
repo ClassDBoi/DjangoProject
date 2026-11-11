@@ -57,7 +57,8 @@ cd ..
 ```
 
 ### 2. Create the database and accounts
-
+Please note that ONE of the team members will need to host this and ensure it is running consistently. \
+To provide access for the other group members we used a Tailscale network, allowing developer devices to access the port used by the MySQL database. Tailscale does not have to be used for this, but you will need something setup to allow remote access to the server port.
 Sign in to MySQL as an administrator (`mysql -u root -p`) and run the following, with
 your own passwords:
 
@@ -72,9 +73,6 @@ GRANT SELECT, INSERT, UPDATE, DELETE ON senior_design.* TO 'senior_design_user'@
 CREATE USER 'senior_design_admin'@'localhost' IDENTIFIED BY 'choose-another-password';
 GRANT ALL PRIVILEGES ON senior_design.* TO 'senior_design_admin'@'localhost';
 ```
-
-If the database runs on another machine, replace `'localhost'` with the address the
-website connects from (or `'%'` for any address, restricted by a firewall or VPN).
 
 ### 3. Restore the database export
 
