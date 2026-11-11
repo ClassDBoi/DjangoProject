@@ -46,7 +46,7 @@ Eligibility, deadlines, amounts and agency are not considered here.
 
 ## Setup (Windows, PowerShell, from the repository root)
 
-1. Get the client data files from the team and place them in `data/` (they are gitignored; never commit them).
+1. Get the client data files from the client and place them in `data/` (they are gitignored; never commit them).
 2. Install [Ollama](https://ollama.com) and download the generator model:
 
    ```powershell
