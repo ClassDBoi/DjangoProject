@@ -3,19 +3,22 @@ import { Link } from "react-router-dom";
 
 import CollegeBadge from "../common/CollegeBadge";
 import ExpandableText from "../common/ExpandableText";
+import FieldGrid from "../common/FieldGrid";
 import KeywordChips from "../common/KeywordChips";
-import MatchList from "../common/MatchList";
+import MatchCarousel from "../common/MatchCarousel";
 import ListToolbar, { FilterSelect } from "../common/ListToolbar";
+import ResearcherPhoto from "../common/ResearcherPhoto";
 import {
     cardStyle, detailCardStyle, detailColumnStyle, layoutStyle, linkStyle, listColumnStyle,
     metaStyle, mutedStyle, pageStyle, sectionTitleStyle, selectedCardStyle,
 } from "../common/styles";
-import useDeselectOnOutsideClick from "./useDeselectOnOutsideClick";
+import useAutoSelectFirst from "../../hooks/useAutoSelectFirst";
 import useDetail from "../../hooks/useDetail";
 import useFilterOptions from "../../hooks/useFilterOptions";
 import useList from "../../hooks/useList";
 import useListParams from "../../hooks/useListParams";
 import useScrollToDetailsOnSmallScreens from "../../hooks/useScrollToDetailsOnSmallScreens";
+import { activeFilterChips } from "../../lib/filters";
 import { NOT_AVAILABLE, formatDate } from "../../lib/format";
 
 // Papers shown in the researcher panel; the rest are one click away on the Papers page.
@@ -32,6 +35,14 @@ const SORT_OPTIONS = [
     { value: "papers", label: "Number of papers" },
 ];
 
+const FILTERS = [
+    { key: "search", label: "Search", format: (value) => `"${value}"` },
+    { key: "college", label: "College" },
+    { key: "department", label: "Department" },
+];
+
+const idOf = (researcher) => researcher.auid;
+
 function Researchers() {
     const [params, update, clear] = useListParams(DEFAULTS);
     const options = useFilterOptions();
@@ -47,12 +58,18 @@ function Researchers() {
     const detail = useDetail("/researchers/", params.selected);
     const matches = useDetail("/researchers/", params.selected, "matches/");
 
-    const select = useCallback((auid) => update({ selected: auid }, { keepPage: true, push: true }), [update]);
-    const deselect = useCallback(() => update({ selected: "" }, { keepPage: true }), [update]);
-
-    // Click anywhere outside the cards and detail panel to clear the selection.
-    useDeselectOnOutsideClick("[data-researcher-card], [data-researcher-details]", deselect);
-    useScrollToDetailsOnSmallScreens("[data-researcher-details]", detail.data);
+    const scrollToDetails = useScrollToDetailsOnSmallScreens("[data-researcher-details]", detail.data);
+    // Clicking the item already shown only scrolls to it (on phones).
+    const select = useCallback((auid) => {
+        if (auid === params.selected) {
+            scrollToDetails(true);
+            return;
+        }
+        scrollToDetails();
+        update({ selected: auid }, { keepPage: true, push: true });
+    }, [update, scrollToDetails, params.selected]);
+    const selectFirst = useCallback((auid) => update({ selected: auid }, { keepPage: true }), [update]);
+    useAutoSelectFirst(researchers, idOf, params.selected, loading, selectFirst);
 
     // Departments of the chosen college only.
     const departments = (options?.researchers.departments || [])
@@ -72,7 +89,7 @@ function Researchers() {
         : "";
 
     return (
-        <div style={pageStyle}>
+        <div className="page" style={pageStyle}>
             <h1>Researchers</h1>
 
             <ListToolbar
@@ -83,7 +100,8 @@ function Researchers() {
                 sort={params.sort}
                 order={params.order}
                 onSortChange={update}
-                resultText={loading ? "Loading researchers..." : `${researchers.length} researchers found`}
+                resultText={loading && !data ? "Loading researchers..." : `${researchers.length} researchers found`}
+                activeFilters={activeFilterChips(FILTERS, params, update)}
                 canClear={canClear}
                 onClear={clear}
             >
@@ -119,18 +137,21 @@ function Researchers() {
                             onClick={() => select(researcher.auid)}
                         >
                             <div style={cardHeaderStyle}>
-                                <CollegeBadge college={researcher.college} />
-                                <div>
-                                    <h3 style={{ margin: "0 0 4px" }}>{researcher.name}</h3>
-                                    <p style={metaStyle}>{researcher.title || NOT_AVAILABLE}</p>
+                                <ResearcherPhoto auid={researcher.auid} name={researcher.name} size={48} />
+                                <div style={{ minWidth: 0 }}>
+                                    <h3 style={{ margin: "0 0 2px", fontSize: "17px" }}>{researcher.name}</h3>
+                                    <p style={{ ...metaStyle, margin: 0 }}>{researcher.title || NOT_AVAILABLE}</p>
+                                    <p style={cardInfoStyle}>{researcher.department || NOT_AVAILABLE}</p>
+                                    <p style={{ ...cardInfoStyle, display: "flex", alignItems: "center", gap: "6px" }}>
+                                        <CollegeBadge college={researcher.college} size={18} />
+                                        {researcher.college || "College not available"}
+                                    </p>
+                                    <p style={{ ...cardInfoStyle, fontSize: "13px" }}>
+                                        {researcher.paper_count} paper{researcher.paper_count === 1 ? "" : "s"}
+                                        {" · "}AUID {researcher.auid}
+                                    </p>
                                 </div>
                             </div>
-                            <p style={metaStyle}>{researcher.department || NOT_AVAILABLE}</p>
-                            <p style={{ ...metaStyle, ...mutedStyle }}>
-                                {researcher.college || "College not available"}
-                                {" · "}{researcher.paper_count} paper{researcher.paper_count === 1 ? "" : "s"}
-                                {" · "}AUID {researcher.auid}
-                            </p>
                         </div>
                     ))}
                 </div>
@@ -141,19 +162,41 @@ function Researchers() {
 
                     {selected && (
                         <div style={detailCardStyle}>
-                            <div style={cardHeaderStyle}>
-                                <CollegeBadge college={selected.college} size={56} />
-                                <div>
-                                    <h2 style={{ margin: "0 0 4px" }}>{selected.name}</h2>
-                                    <p style={metaStyle}>{selected.title || NOT_AVAILABLE}</p>
+                            {/* Photo beside the name and descriptors; on phones the
+                                descriptors move below (see .detail-header in index.css). */}
+                            <div className="detail-header">
+                                <div className="detail-header-photo">
+                                    <ResearcherPhoto auid={selected.auid} name={selected.name} size={84} />
+                                </div>
+                                <div style={{ minWidth: 0, alignSelf: "center" }}>
+                                    <h2 style={{ margin: "0 0 2px" }}>{selected.name}</h2>
+                                    <p style={{ ...metaStyle, margin: 0 }}>{selected.title || NOT_AVAILABLE}</p>
+                                </div>
+                                <div className="detail-header-fields">
+                                    <FieldGrid
+                                        fields={[
+                                            { label: "Department", value: selected.department || NOT_AVAILABLE },
+                                            {
+                                                label: "College",
+                                                value: (
+                                                    <span style={{ display: "inline-flex", alignItems: "center", gap: "6px" }}>
+                                                        <CollegeBadge college={selected.college} size={22} />
+                                                        {selected.college || NOT_AVAILABLE}
+                                                    </span>
+                                                ),
+                                            },
+                                            { label: "AUID", value: selected.auid },
+                                        ]}
+                                    />
                                 </div>
                             </div>
 
-                            <p style={metaStyle}><strong>Department:</strong> {selected.department || NOT_AVAILABLE}</p>
-                            <p style={metaStyle}><strong>College:</strong> {selected.college || NOT_AVAILABLE}</p>
-                            <p style={metaStyle}><strong>AUID:</strong> {selected.auid}</p>
-
-                            <MatchList kind="researcher" data={matches.data} loading={matches.loading} />
+                            <MatchCarousel
+                                key={`matches-${selected.auid}`}
+                                kind="researcher"
+                                data={matches.data}
+                                loading={matches.loading}
+                            />
 
                             <h3 style={sectionTitleStyle}>
                                 Research Papers ({papers.length})
@@ -203,8 +246,8 @@ function Researchers() {
                         </div>
                     )}
 
-                    {!params.selected && (
-                        <p style={mutedStyle}>Select a researcher to view details.</p>
+                    {!loading && researchers.length === 0 && !params.selected && (
+                        <p style={mutedStyle}>No researcher to show.</p>
                     )}
                 </div>
             </div>
@@ -214,9 +257,15 @@ function Researchers() {
 
 const cardHeaderStyle = {
     display: "flex",
-    alignItems: "center",
+    alignItems: "flex-start",
     gap: "14px",
-    marginBottom: "8px",
+};
+
+const cardInfoStyle = {
+    ...metaStyle,
+    ...mutedStyle,
+    margin: "4px 0 0",
+    fontSize: "14px",
 };
 
 const allPapersButtonStyle = {

@@ -11,9 +11,11 @@ import { useSearchParams } from "react-router-dom";
  *   current values, an update function and a function that clears everything.
  *
  * update({ sort: "date" }) also returns to page 1, because the old page number
- * no longer means anything once the list changes. Pass { keepPage: true } to
- * avoid that, and { push: true } to add a browser history entry (used for
- * selecting an item, so Back returns to the previous selection).
+ * no longer means anything once the list changes, and clears the selected item,
+ * so the page shows the first result of the new list (useAutoSelectFirst).
+ * Pass { keepPage: true } to keep the page. Changing only `selected` keeps
+ * everything else. Pass { push: true } to add a browser history entry (used
+ * for selecting an item, so Back returns to the previous selection).
  */
 export default function useListParams(defaults) {
     const [searchParams, setSearchParams] = useSearchParams();
@@ -41,6 +43,13 @@ export default function useListParams(defaults) {
 
             if (!keepPage && !("page" in changes)) {
                 next.delete("page");
+            }
+
+            // Any change to the list itself (search, filter, sort, page) starts
+            // again from its first result.
+            const listChanged = Object.keys(changes).some((key) => key !== "selected");
+            if (listChanged && !("selected" in changes)) {
+                next.delete("selected");
             }
 
             return next;

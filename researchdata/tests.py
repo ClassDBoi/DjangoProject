@@ -109,11 +109,12 @@ class MatchTests(TestCase):
 
     @classmethod
     def setUpTestData(cls):
-        Researcher.objects.create(auid="R1", name="Ada Lane", department="Chemistry", college="Sciences")
+        Researcher.objects.create(auid="R1", name="Ada Lane", title="Professor", department="Chemistry",
+                                  college="Sciences")
         Researcher.objects.create(auid="R2", name="Ben Cole", department="Music", college="Liberal Arts")
         paper = Paper.objects.create(id=7, title="Biosensors for water")
         paper.researchers.add(Researcher.objects.get(auid="R1"))
-        Opportunity.objects.create(opp_id=10, title="Sensors call", agency="NSF")
+        Opportunity.objects.create(opp_id=10, title="Sensors call", agency="NSF", estimated_funding=250000)
         Opportunity.objects.create(opp_id=11, title="Career award", agency="NIH")
         Opportunity.objects.create(opp_id=12, title="Title only", agency="CDC")
 
@@ -170,6 +171,7 @@ class MatchTests(TestCase):
         data = self.client.get("/api/researchers/R1/matches/").json()
         self.assertEqual([m["opp_id"] for m in data["matches"]], [10])
         self.assertEqual(data["matches"][0]["evidence"][0]["paper_title"], "Biosensors for water")
+        self.assertEqual(float(data["matches"][0]["estimated_funding"]), 250000)
 
         # Below the cutoff: no close match.
         data = self.client.get("/api/researchers/R2/matches/").json()
@@ -177,6 +179,7 @@ class MatchTests(TestCase):
 
         data = self.client.get("/api/opportunities/10/matches/").json()
         self.assertEqual([m["auid"] for m in data["matches"]], ["R1"])
+        self.assertEqual(data["matches"][0]["title"], "Professor")
         data = self.client.get("/api/opportunities/11/matches/").json()
         self.assertIn("career-stage", data["unmatched_reason"])
         data = self.client.get("/api/opportunities/12/matches/").json()

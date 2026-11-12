@@ -2,20 +2,22 @@ import React, { useCallback } from "react";
 
 import DeadlineBadge from "../common/DeadlineBadge";
 import ExpandableText from "../common/ExpandableText";
+import FieldGrid from "../common/FieldGrid";
 import KeywordChips from "../common/KeywordChips";
-import MatchList from "../common/MatchList";
+import MatchCarousel from "../common/MatchCarousel";
 import ListToolbar, { FilterSelect } from "../common/ListToolbar";
 import Pagination from "../common/Pagination";
 import {
     cardStyle, detailCardStyle, detailColumnStyle, layoutStyle, listColumnStyle,
     metaStyle, mutedStyle, pageStyle, sectionTitleStyle, selectedCardStyle,
 } from "../common/styles";
-import useDeselectOnOutsideClick from "./useDeselectOnOutsideClick";
+import useAutoSelectFirst from "../../hooks/useAutoSelectFirst";
 import useDetail from "../../hooks/useDetail";
 import useFilterOptions from "../../hooks/useFilterOptions";
 import useList from "../../hooks/useList";
 import useListParams from "../../hooks/useListParams";
 import useScrollToDetailsOnSmallScreens from "../../hooks/useScrollToDetailsOnSmallScreens";
+import { activeFilterChips } from "../../lib/filters";
 import { NOT_AVAILABLE, formatDate, formatMoney } from "../../lib/format";
 
 // Every URL parameter this page uses, with its default.
@@ -41,6 +43,16 @@ const FUNDING_OPTIONS = [100000, 500000, 1000000, 5000000, 10000000].map((n) => 
     value: String(n), label: `${formatMoney(n)}+`,
 }));
 
+const FILTERS = [
+    { key: "search", label: "Search", format: (value) => `"${value}"` },
+    { key: "agency", label: "Agency" },
+    { key: "category", label: "Category" },
+    { key: "status", label: "Status", format: (value) => STATUS_OPTIONS.find((o) => o.value === value)?.label || value },
+    { key: "min_funding", label: "Estimated funding", format: (value) => `${formatMoney(value)}+` },
+];
+
+const idOf = (opportunity) => String(opportunity.opp_id);
+
 function Opportunities() {
     const [params, update, clear] = useListParams(DEFAULTS);
     const options = useFilterOptions();
@@ -59,12 +71,23 @@ function Opportunities() {
     const detail = useDetail("/opportunities/", params.selected);
     const matches = useDetail("/opportunities/", params.selected, "matches/");
 
-    const select = useCallback((id) => update({ selected: id }, { keepPage: true, push: true }), [update]);
-    const deselect = useCallback(() => update({ selected: "" }, { keepPage: true }), [update]);
+    const scrollToDetails = useScrollToDetailsOnSmallScreens("[data-opportunity-details]", detail.data);
+    // Clicking the item already shown only scrolls to it (on phones).
+    const select = useCallback((id) => {
+        if (id === params.selected) {
+            scrollToDetails(true);
+            return;
+        }
+        scrollToDetails();
+        update({ selected: id }, { keepPage: true, push: true });
+    }, [update, scrollToDetails, params.selected]);
+    const selectFirst = useCallback((id) => update({ selected: id }, { keepPage: true }), [update]);
+    useAutoSelectFirst(opportunities, idOf, params.selected, loading, selectFirst);
 
-    // Click anywhere outside the cards and detail panel to clear the selection.
-    useDeselectOnOutsideClick("[data-opportunity-card], [data-opportunity-details]", deselect);
-    useScrollToDetailsOnSmallScreens("[data-opportunity-details]", detail.data);
+    const changePage = (page) => {
+        update({ page });
+        window.scrollTo({ top: 0 });
+    };
 
     const canClear = Boolean(params.search || params.agency || params.category || params.status
         || params.min_funding || params.sort !== DEFAULTS.sort || params.order !== DEFAULTS.order);
@@ -72,7 +95,7 @@ function Opportunities() {
     const selected = detail.data;
 
     return (
-        <div style={pageStyle}>
+        <div className="page" style={pageStyle}>
             <h1>Funding Opportunities</h1>
 
             <ListToolbar
@@ -84,6 +107,7 @@ function Opportunities() {
                 order={params.order}
                 onSortChange={update}
                 resultText={loading && !data ? "Loading opportunities..." : `${data?.count ?? 0} opportunities found`}
+                activeFilters={activeFilterChips(FILTERS, params, update)}
                 canClear={canClear}
                 onClear={clear}
             >
@@ -133,13 +157,15 @@ function Opportunities() {
                             onClick={() => select(String(opportunity.opp_id))}
                         >
                             <div style={titleRowStyle}>
-                                <h3 style={{ margin: 0 }}>{opportunity.title}</h3>
+                                <h3 style={{ margin: 0, fontSize: "17px" }}>{opportunity.title}</h3>
                                 <DeadlineBadge dueDate={opportunity.due_date} />
                             </div>
-                            <p style={metaStyle}><strong>Agency:</strong> {opportunity.agency || NOT_AVAILABLE}</p>
-                            <p style={metaStyle}><strong>Estimated Funding:</strong> {formatMoney(opportunity.estimated_funding)}</p>
-                            <p style={{ ...metaStyle, ...mutedStyle }}>
-                                Due {formatDate(opportunity.due_date)}
+                            <p style={metaStyle}>{opportunity.agency || "Agency not available"}</p>
+                            <p style={{ ...metaStyle, ...mutedStyle, fontSize: "14px" }}>
+                                {opportunity.estimated_funding != null
+                                    ? `${formatMoney(opportunity.estimated_funding)} estimated`
+                                    : "Funding not available"}
+                                {" · "}Due {formatDate(opportunity.due_date)}
                                 {" · "}{opportunity.category || "Category not available"}
                             </p>
                         </div>
@@ -148,7 +174,7 @@ function Opportunities() {
                     <Pagination
                         page={data?.current_page || 1}
                         totalPages={data?.total_pages || 1}
-                        onPageChange={(page) => update({ page })}
+                        onPageChange={changePage}
                         disabled={loading}
                     />
                 </div>
@@ -164,14 +190,23 @@ function Opportunities() {
                                 <DeadlineBadge dueDate={selected.due_date} />
                             </div>
 
-                            <p style={metaStyle}><strong>Agency:</strong> {selected.agency || NOT_AVAILABLE}</p>
-                            <p style={metaStyle}><strong>Category:</strong> {selected.category || NOT_AVAILABLE}</p>
-                            <p style={metaStyle}><strong>Estimated Funding:</strong> {formatMoney(selected.estimated_funding)}</p>
-                            <p style={metaStyle}><strong>Award Floor:</strong> {formatMoney(selected.award_floor)}</p>
-                            <p style={metaStyle}><strong>Award Ceiling:</strong> {formatMoney(selected.award_ceiling)}</p>
-                            <p style={metaStyle}><strong>Due Date:</strong> {formatDate(selected.due_date)}</p>
+                            <FieldGrid
+                                fields={[
+                                    { label: "Agency", value: selected.agency || NOT_AVAILABLE },
+                                    { label: "Category", value: selected.category || NOT_AVAILABLE },
+                                    { label: "Due date", value: formatDate(selected.due_date) },
+                                    { label: "Estimated funding", value: formatMoney(selected.estimated_funding) },
+                                    { label: "Award floor", value: formatMoney(selected.award_floor) },
+                                    { label: "Award ceiling", value: formatMoney(selected.award_ceiling) },
+                                ]}
+                            />
 
-                            <MatchList kind="opportunity" data={matches.data} loading={matches.loading} />
+                            <MatchCarousel
+                                key={`matches-${selected.opp_id}`}
+                                kind="opportunity"
+                                data={matches.data}
+                                loading={matches.loading}
+                            />
 
                             <ExpandableText
                                 key={`description-${selected.opp_id}`}
@@ -196,7 +231,7 @@ function Opportunities() {
 
                             <h3 style={sectionTitleStyle}>Domains</h3>
                             {selected.domains?.length > 0 ? (
-                                <ul style={{ paddingLeft: "20px" }}>
+                                <ul style={{ paddingLeft: "20px", marginBottom: 0 }}>
                                     {selected.domains.map((domain, index) => (
                                         <li key={index} style={{ marginBottom: "10px" }}>
                                             <strong>{domain.domain_name}</strong>
@@ -215,8 +250,8 @@ function Opportunities() {
                         </div>
                     )}
 
-                    {!params.selected && (
-                        <p style={mutedStyle}>Select an opportunity to view its details.</p>
+                    {!loading && opportunities.length === 0 && !params.selected && (
+                        <p style={mutedStyle}>No opportunity to show.</p>
                     )}
                 </div>
             </div>
@@ -229,7 +264,7 @@ const titleRowStyle = {
     alignItems: "flex-start",
     justifyContent: "space-between",
     gap: "12px",
-    marginBottom: "10px",
+    marginBottom: "6px",
 };
 
 const primaryStyle = {

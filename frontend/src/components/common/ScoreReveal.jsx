@@ -18,7 +18,11 @@ function ScoreReveal({ children, score, scoreLabel = "Semantic similarity", digi
     }
 
     const text = `${scoreLabel}: ${Number(score).toFixed(digits)}`;
-    const toggle = () => setOpen((current) => !current);
+    // stopPropagation: a badge inside a clickable card toggles only itself.
+    const toggle = (event) => {
+        event.stopPropagation();
+        setOpen((current) => !current);
+    };
 
     // A span acting as a button (rather than <button>) so long phrases wrap
     // naturally inside sentences and list items.
@@ -30,7 +34,7 @@ function ScoreReveal({ children, score, scoreLabel = "Semantic similarity", digi
             onKeyDown={(event) => {
                 if (event.key === "Enter" || event.key === " ") {
                     event.preventDefault();
-                    toggle();
+                    toggle(event);
                 }
             }}
             title={text}

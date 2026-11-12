@@ -4,7 +4,7 @@
  */
 
 export const pageStyle = {
-    padding: "32px 40px 40px",
+    padding: "24px 40px 16px",
     maxWidth: "1400px",
     margin: "auto",
 };
@@ -22,8 +22,8 @@ export const listColumnStyle = {
 };
 
 export const cardStyle = {
-    padding: "18px 20px",
-    marginBottom: "14px",
+    padding: "16px 18px",
+    marginBottom: "12px",
     backgroundColor: "white",
     border: "1px solid #ddd",
     borderRadius: "10px",
@@ -32,13 +32,17 @@ export const cardStyle = {
     transition: "border-color 0.15s, box-shadow 0.15s",
 };
 
+// `border` is set in full (not borderColor) so React never mixes the shorthand and
+// the longhand when a card switches between the two styles.
 export const selectedCardStyle = {
     ...cardStyle,
-    borderColor: "var(--auburn-orange)",
+    border: "1px solid var(--auburn-orange)",
     boxShadow: "0 0 0 2px rgba(204, 78, 11, 0.15)",
 };
 
 // The detail panel stays in view while the list scrolls, below the sticky navigation bar.
+// Its height leaves the same 16px below it as the page's bottom padding, so the end of
+// the page has no extra blank strip.
 export const detailColumnStyle = {
     flex: 1,
     minWidth: "320px",
