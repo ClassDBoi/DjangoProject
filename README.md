@@ -200,12 +200,16 @@ opportunities. After a large addition, rate a fresh sample of matches before rel
 
 ## Backing up the database
 
-```powershell
-mysqldump --single-transaction --no-tablespaces --default-character-set=utf8mb4 -h 127.0.0.1 -P 3306 -u senior_design_admin -p senior_design > ausme_db_YYYY_MM.sql
-```
+   ```powershell
+   mysqldump --single-transaction --set-gtid-purged=OFF --no-tablespaces --default-character-set=utf8mb4 -h 127.0.0.1 -P 3306 -u root -p --result-file=ausme_db_YYYY_MM.sql senior_design
+   ```
 
-This writes every table and row to one `.sql` file, which can be restored with the command
-in setup step 3. The file contains client data: store it outside the repository.
+   Run it with root (or another account with server-level privileges) on the database
+   computer: newer `mysqldump` versions read server-level information that
+   database-only accounts cannot access. If `mysqldump` is not recognized, use its full
+   path, e.g. `& "C:\Program Files\MySQL\MySQL Server <version>\bin\mysqldump.exe"`.
+   Use `--result-file` rather than `>`: PowerShell's `>` saves the file as UTF-16, which
+   `mysql` cannot restore.
 
 ## Schema changes
 
